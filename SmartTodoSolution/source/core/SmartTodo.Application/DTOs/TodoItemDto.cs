@@ -1,3 +1,5 @@
+using SmartTodo.Domain.Enums;
+
 namespace SmartTodo.Application.DTOs;
 
 public record TodoItemDto(
@@ -5,7 +7,10 @@ public record TodoItemDto(
     string Title,
     string? Description,
     bool IsCompleted,
+    TodoStatus Status,
     DateTime CreatedAt,
+    DateTime UpdatedAt,
+    DateTime? StartDate,
     DateTime? CompletedAt
 );
 
@@ -17,5 +22,6 @@ public record CreateTodoItemDto(
 public record UpdateTodoItemDto(
     string? Title,
     string? Description,
-    bool? IsCompleted
+    bool? IsCompleted,
+    TodoStatus? Status
 );

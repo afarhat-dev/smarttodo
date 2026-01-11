@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SmartTodo.Application.DTOs;
 using SmartTodo.Application.Services;
+using SmartTodo.Domain.Enums;
 
 namespace StdApi.Controllers;
 
@@ -19,8 +20,38 @@ public class TodoController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<TodoItemDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<TodoItemDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<TodoItemDto>>> GetAll(
+        [FromQuery] TodoStatus? status = null,
+        [FromQuery] bool? isCompleted = null,
+        [FromQuery] DateTime? createdFrom = null,
+        [FromQuery] DateTime? createdTo = null,
+        [FromQuery] DateTime? updatedFrom = null,
+        [FromQuery] DateTime? updatedTo = null,
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] DateTime? startDateTo = null,
+        [FromQuery] DateTime? completedFrom = null,
+        [FromQuery] DateTime? completedTo = null)
     {
+        if (status.HasValue || isCompleted.HasValue || createdFrom.HasValue || createdTo.HasValue ||
+            updatedFrom.HasValue || updatedTo.HasValue || startDateFrom.HasValue || startDateTo.HasValue ||
+            completedFrom.HasValue || completedTo.HasValue)
+        {
+            var filter = new TodoFilter(
+                status,
+                createdFrom,
+                createdTo,
+                updatedFrom,
+                updatedTo,
+                startDateFrom,
+                startDateTo,
+                completedFrom,
+                completedTo,
+                isCompleted
+            );
+            var filteredTodos = await _todoService.GetFilteredAsync(filter);
+            return Ok(filteredTodos);
+        }
+
         var todos = await _todoService.GetAllAsync();
         return Ok(todos);
     }

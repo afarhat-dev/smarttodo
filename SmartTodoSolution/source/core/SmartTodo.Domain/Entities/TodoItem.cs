@@ -1,3 +1,5 @@
+using SmartTodo.Domain.Enums;
+
 namespace SmartTodo.Domain.Entities;
 
 public class TodoItem
@@ -7,7 +9,10 @@ public class TodoItem
     public string? Description { get; private set; }
     public bool IsCompleted { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
+    public DateTime? StartDate { get; private set; }
     public DateTime? CompletedAt { get; private set; }
+    public TodoStatus Status { get; private set; }
 
     private TodoItem()
     {
@@ -23,7 +28,9 @@ public class TodoItem
         Title = title;
         Description = description;
         IsCompleted = false;
+        Status = TodoStatus.NotStarted;
         CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateTitle(string title)
@@ -32,11 +39,13 @@ public class TodoItem
             throw new ArgumentException("Title cannot be empty", nameof(title));
 
         Title = title;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateDescription(string? description)
     {
         Description = description;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkAsCompleted()
@@ -44,7 +53,9 @@ public class TodoItem
         if (!IsCompleted)
         {
             IsCompleted = true;
+            Status = TodoStatus.Completed;
             CompletedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
         }
     }
 
@@ -53,7 +64,50 @@ public class TodoItem
         if (IsCompleted)
         {
             IsCompleted = false;
+            Status = StartDate.HasValue ? TodoStatus.InProgress : TodoStatus.NotStarted;
             CompletedAt = null;
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void StartTask()
+    {
+        if (Status == TodoStatus.NotStarted)
+        {
+            StartDate = DateTime.UtcNow;
+            Status = TodoStatus.InProgress;
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void PutOnHold()
+    {
+        if (Status != TodoStatus.Completed && Status != TodoStatus.Cancelled)
+        {
+            Status = TodoStatus.OnHold;
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void ResumeTask()
+    {
+        if (Status == TodoStatus.OnHold)
+        {
+            Status = TodoStatus.InProgress;
+            if (!StartDate.HasValue)
+            {
+                StartDate = DateTime.UtcNow;
+            }
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void CancelTask()
+    {
+        if (Status != TodoStatus.Completed)
+        {
+            Status = TodoStatus.Cancelled;
+            UpdatedAt = DateTime.UtcNow;
         }
     }
 }

@@ -25,6 +25,12 @@ public class TodoService : ITodoService
         return todoItems.Select(MapToDto);
     }
 
+    public async Task<IEnumerable<TodoItemDto>> GetFilteredAsync(TodoFilter filter)
+    {
+        var todoItems = await _repository.GetFilteredAsync(filter);
+        return todoItems.Select(MapToDto);
+    }
+
     public async Task<TodoItemDto> CreateAsync(CreateTodoItemDto createDto)
     {
         var todoItem = new TodoItem(createDto.Title, createDto.Description);
@@ -43,6 +49,28 @@ public class TodoService : ITodoService
 
         if (updateDto.Description != null)
             todoItem.UpdateDescription(updateDto.Description);
+
+        if (updateDto.Status.HasValue)
+        {
+            switch (updateDto.Status.Value)
+            {
+                case Domain.Enums.TodoStatus.InProgress:
+                    todoItem.StartTask();
+                    break;
+                case Domain.Enums.TodoStatus.OnHold:
+                    todoItem.PutOnHold();
+                    break;
+                case Domain.Enums.TodoStatus.Completed:
+                    todoItem.MarkAsCompleted();
+                    break;
+                case Domain.Enums.TodoStatus.Cancelled:
+                    todoItem.CancelTask();
+                    break;
+                case Domain.Enums.TodoStatus.NotStarted:
+                    todoItem.MarkAsIncomplete();
+                    break;
+            }
+        }
 
         if (updateDto.IsCompleted.HasValue)
         {
@@ -68,7 +96,10 @@ public class TodoService : ITodoService
             todoItem.Title,
             todoItem.Description,
             todoItem.IsCompleted,
+            todoItem.Status,
             todoItem.CreatedAt,
+            todoItem.UpdatedAt,
+            todoItem.StartDate,
             todoItem.CompletedAt
         );
     }
