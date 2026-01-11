@@ -39,7 +39,8 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureLogging((context, logging) =>
     {
         logging.ClearProviders();
-        logging.AddConsole();
+        logging.AddFilter("Microsoft", LogLevel.Warning);
+        //logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Information);
     })
     .Build();

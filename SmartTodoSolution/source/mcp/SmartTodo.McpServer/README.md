@@ -66,7 +66,7 @@ or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
       "args": [
         "run",
         "--project",
-        "/path/to/SmartTodoSolution/source/mcp/SmartTodo.McpServer"
+        "E:\dotnet\smarttodo\SmartTodoSolution\source\mcp\SmartTodo.McpServer"
       ]
     }
   }
