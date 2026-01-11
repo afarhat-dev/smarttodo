@@ -1,5 +1,12 @@
 <Solution>
   <Folder Name="/source/" />
+  <Folder Name="/source/core/">
+    <Project Path="source/core/SmartTodo.Domain/SmartTodo.Domain.csproj" Id="1a753d27-515c-40ff-bc0b-bf46604d5db1" />
+    <Project Path="source/core/SmartTodo.Application/SmartTodo.Application.csproj" Id="2a753d27-515c-40ff-bc0b-bf46604d5db2" />
+  </Folder>
+  <Folder Name="/source/infrastructure/">
+    <Project Path="source/infrastructure/SmartTodo.Infrastructure/SmartTodo.Infrastructure.csproj" Id="3a753d27-515c-40ff-bc0b-bf46604d5db3" />
+  </Folder>
   <Folder Name="/source/ui/">
     <Project Path="source/ui/StdApi/StdApi.csproj" Id="8a753d27-515c-40ff-bc0b-bf46604d5dbe" />
   </Folder>

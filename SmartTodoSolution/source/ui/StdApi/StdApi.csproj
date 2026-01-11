@@ -13,4 +13,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SmartTodo.Application\SmartTodo.Application.csproj" />
+    <ProjectReference Include="..\..\infrastructure\SmartTodo.Infrastructure\SmartTodo.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
