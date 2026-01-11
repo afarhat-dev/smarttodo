@@ -7,7 +7,9 @@ namespace SmartTodo.Infrastructure.Repositories;
 
 public class InMemoryTodoRepository : ITodoRepository
 {
-    private readonly ConcurrentDictionary<Guid, TodoItem> _todos = new();
+    private static readonly ConcurrentDictionary<Guid, TodoItem> _todos = new();
+
+    
 
     public Task<TodoItem?> GetByIdAsync(Guid id)
     {
