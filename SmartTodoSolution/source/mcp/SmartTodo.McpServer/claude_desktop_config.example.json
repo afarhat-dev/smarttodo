@@ -2,11 +2,11 @@
   "mcpServers": {
     "smarttodo": {
       "command": "dotnet",
-      "args": [
-        "run",
-        "--project",
-        "/ABSOLUTE/PATH/TO/smarttodo/SmartTodoSolution/source/mcp/SmartTodo.McpServer"
-      ]
+        "args": [
+            "run",
+            "--project",
+            "D:\\source\\smarttodo\\SmartTodoSolution\\source\\mcp\\SmartTodo.McpServer\\SmartTodo.McpServer.csproj"
+        ]
     }
   }
 }

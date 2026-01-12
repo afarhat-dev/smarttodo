@@ -39,9 +39,11 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureLogging((context, logging) =>
     {
         logging.ClearProviders();
-        logging.AddFilter("Microsoft", LogLevel.Warning);
-        //logging.AddConsole();
-        logging.SetMinimumLevel(LogLevel.Information);
+        //logging.AddFilter("Microsoft", LogLevel.Warning);
+        //logging.AddFilter("System", LogLevel.Warning);
+        //logging.AddProvider.File("logs/mcpserver.log");
+        //  logging.AddConsole();
+        //logging.SetMinimumLevel(LogLevel.Information);
     })
     .Build();
 
