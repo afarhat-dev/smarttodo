@@ -14,10 +14,10 @@ using SmartTodo.McpServer.Server;
 using SmartTodo.McpServer.Tools;
 
 // Configure Serilog BEFORE building the host
-// Logs go to stderr (for MCP compliance), files, and optionally Seq
+// Logs only to files and Seq (NOT to console to avoid stdout/stderr issues)
+// MCP protocol requires stdout for JSON-RPC messages only
 
 var loggerConfig = new LoggerConfiguration()
-    .WriteTo.Console(System.Console.Error) // Critical: Write to stderr, NOT stdout
     .WriteTo.File(
         path: "logs/mcp-server-.log",
         rollingInterval: RollingInterval.Day,
@@ -38,7 +38,17 @@ try
 catch (Exception ex)
 {
     // Seq not available, continue without it
-    Console.Error.WriteLine($"Warning: Could not configure Seq logging: {ex.Message}");
+    // Log startup warning to file instead of console
+    try
+    {
+        System.IO.Directory.CreateDirectory("logs");
+        System.IO.File.AppendAllText("logs/startup.log",
+            $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - Warning: Could not configure Seq logging: {ex.Message}\n");
+    }
+    catch
+    {
+        // If we can't log the warning, just continue silently
+    }
 }
 
 Log.Logger = loggerConfig.CreateLogger();
