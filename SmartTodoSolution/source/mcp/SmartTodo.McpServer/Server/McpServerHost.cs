@@ -55,10 +55,27 @@ public class McpServerHost
                 if (string.IsNullOrEmpty(line))
                     continue;
 
-                _logger.LogDebug("Received request: {Request}", line);
+                _logger.LogDebug("Received message: {Message}", line);
 
                 try
                 {
+                    // Parse as a generic JSON document first to check if it's a notification
+                    using var doc = JsonDocument.Parse(line);
+                    var root = doc.RootElement;
+
+                    // Check if this is a notification (no 'id' field)
+                    if (!root.TryGetProperty("id", out _))
+                    {
+                        // This is a notification - handle it without sending a response
+                        var notification = JsonSerializer.Deserialize<McpNotification>(line, _jsonOptions);
+                        if (notification != null)
+                        {
+                            HandleNotification(notification);
+                        }
+                        continue;
+                    }
+
+                    // This is a request - deserialize and handle it
                     var request = JsonSerializer.Deserialize<McpRequest>(line, _jsonOptions);
                     if (request == null)
                     {
@@ -74,7 +91,9 @@ public class McpServerHost
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing request");
+                    _logger.LogError(ex, "Error processing message");
+
+                    // Only send error response for requests (not notifications)
                     var errorResponse = new McpResponse
                     {
                         Id = null,
@@ -253,5 +272,22 @@ public class McpServerHost
         }
 
         return _promptHandler.GetPrompt(promptName, promptArgs);
+    }
+
+    private void HandleNotification(McpNotification notification)
+    {
+        // Handle notifications (these don't require responses)
+        switch (notification.Method)
+        {
+            case "notifications/initialized":
+                _logger.LogInformation("Client initialization complete");
+                break;
+            case "notifications/cancelled":
+                _logger.LogInformation("Client cancelled operation");
+                break;
+            default:
+                _logger.LogDebug("Received notification: {Method}", notification.Method);
+                break;
+        }
     }
 }
