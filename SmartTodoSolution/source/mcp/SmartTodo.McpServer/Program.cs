@@ -13,28 +13,58 @@ using SmartTodo.McpServer.Resources;
 using SmartTodo.McpServer.Server;
 using SmartTodo.McpServer.Tools;
 
-// Configure Serilog BEFORE building the host - logs go to files, NOT stdout
+// Configure Serilog BEFORE building the host
+// Logs only to files and Seq (NOT to console to avoid stdout/stderr issues)
+// MCP protocol requires stdout for JSON-RPC messages only
 
-
-Log.Logger = new LoggerConfiguration()
+var loggerConfig = new LoggerConfiguration()
     .WriteTo.File(
         path: "logs/mcp-server-.log",
         rollingInterval: RollingInterval.Day,
         restrictedToMinimumLevel: LogEventLevel.Information
     )
-    .WriteTo.Seq("http://localhost:5341/")
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.Extensions.Hosting", LogEventLevel.Warning)
-    .MinimumLevel.Override("System", LogEventLevel.Warning)
-    .CreateLogger();
+    .MinimumLevel.Override("System", LogEventLevel.Warning);
+
+// Try to add Seq sink if available (optional)
+try
+{
+    loggerConfig.WriteTo.Seq(
+        serverUrl: "http://localhost:5341/"
+    );
+}
+catch (Exception ex)
+{
+    // Seq not available, continue without it
+    // Log startup warning to file instead of console
+    try
+    {
+        System.IO.Directory.CreateDirectory("logs");
+        System.IO.File.AppendAllText("logs/startup.log",
+            $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - Warning: Could not configure Seq logging: {ex.Message}\n");
+    }
+    catch
+    {
+        // If we can't log the warning, just continue silently
+    }
+}
+
+Log.Logger = loggerConfig.CreateLogger();
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
     {
         config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
     })
-    .UseSerilog() // Use Serilog for all logging - THIS IS CRITICAL
+    .ConfigureLogging(logging =>
+    {
+        // CRITICAL: Clear all default logging providers (especially console)
+        // This prevents ANY output to stdout/stderr from the host builder
+        logging.ClearProviders();
+    })
+    .UseSerilog() // Use Serilog for all logging - file-based only
     .ConfigureServices((context, services) =>
     {
         // Configure MCP Server Settings
@@ -42,8 +72,9 @@ var host = Host.CreateDefaultBuilder(args)
         context.Configuration.GetSection("McpServer").Bind(mcpSettings);
         services.AddSingleton(mcpSettings);
         // Register Application Layer Services
+        // Both must be singleton since handlers are singleton
         services.AddSingleton<ITodoRepository, InMemoryTodoRepository>();
-        services.AddScoped<ITodoService, TodoService>();
+        services.AddSingleton<ITodoService, TodoService>();
         // Register MCP Server Components
         services.AddSingleton<TodoToolHandler>();
         services.AddSingleton<TodoResourceHandler>();
