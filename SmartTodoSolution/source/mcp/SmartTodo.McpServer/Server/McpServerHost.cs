@@ -32,7 +32,7 @@ public class McpServerHost
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
+            WriteIndented = false // CRITICAL: Must be false for stdio JSON-RPC (single line per message)
         };
     }
 
