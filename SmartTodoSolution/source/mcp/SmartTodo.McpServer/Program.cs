@@ -13,21 +13,41 @@ using SmartTodo.McpServer.Resources;
 using SmartTodo.McpServer.Server;
 using SmartTodo.McpServer.Tools;
 
-// Configure Serilog BEFORE building the host - logs go to files, NOT stdout
+// Configure Serilog BEFORE building the host
+// Logs go to stderr (for MCP compliance), files, and optionally Seq
 
-
-Log.Logger = new LoggerConfiguration()
+var loggerConfig = new LoggerConfiguration()
+    .WriteTo.Console(
+        standardErrorStream: true, // Critical: Write to stderr, NOT stdout
+        restrictedToMinimumLevel: LogEventLevel.Information
+    )
     .WriteTo.File(
         path: "logs/mcp-server-.log",
         rollingInterval: RollingInterval.Day,
         restrictedToMinimumLevel: LogEventLevel.Information
     )
-    .WriteTo.Seq("http://localhost:5341/")
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.Extensions.Hosting", LogEventLevel.Warning)
-    .MinimumLevel.Override("System", LogEventLevel.Warning)
-    .CreateLogger();
+    .MinimumLevel.Override("System", LogEventLevel.Warning);
+
+// Try to add Seq sink if available (optional)
+try
+{
+    loggerConfig.WriteTo.Seq(
+        serverUrl: "http://localhost:5341/",
+        restrictedToMinimumLevel: LogEventLevel.Information,
+        apiKey: null,
+        compact: true
+    );
+}
+catch (Exception ex)
+{
+    // Seq not available, continue without it
+    Console.Error.WriteLine($"Warning: Could not configure Seq logging: {ex.Message}");
+}
+
+Log.Logger = loggerConfig.CreateLogger();
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
@@ -42,8 +62,9 @@ var host = Host.CreateDefaultBuilder(args)
         context.Configuration.GetSection("McpServer").Bind(mcpSettings);
         services.AddSingleton(mcpSettings);
         // Register Application Layer Services
+        // Both must be singleton since handlers are singleton
         services.AddSingleton<ITodoRepository, InMemoryTodoRepository>();
-        services.AddScoped<ITodoService, TodoService>();
+        services.AddSingleton<ITodoService, TodoService>();
         // Register MCP Server Components
         services.AddSingleton<TodoToolHandler>();
         services.AddSingleton<TodoResourceHandler>();

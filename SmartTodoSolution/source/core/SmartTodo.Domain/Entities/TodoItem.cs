@@ -4,6 +4,10 @@ namespace SmartTodo.Domain.Entities;
 
 public class TodoItem
 {
+    // Validation constants
+    public const int MaxTitleLength = 200;
+    public const int MaxDescriptionLength = 2000;
+
     public Guid Id { get; private set; }
     public string Title { get; private set; }
     public string? Description { get; private set; }
@@ -24,6 +28,19 @@ public class TodoItem
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title cannot be empty", nameof(title));
 
+        // Sanitize and validate title
+        title = title.Trim();
+        if (title.Length > MaxTitleLength)
+            throw new ArgumentException($"Title cannot exceed {MaxTitleLength} characters", nameof(title));
+
+        // Sanitize and validate description
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            description = description.Trim();
+            if (description.Length > MaxDescriptionLength)
+                throw new ArgumentException($"Description cannot exceed {MaxDescriptionLength} characters", nameof(description));
+        }
+
         Id = Guid.NewGuid();
         Title = title;
         Description = description;
@@ -38,12 +55,25 @@ public class TodoItem
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title cannot be empty", nameof(title));
 
+        // Sanitize and validate title
+        title = title.Trim();
+        if (title.Length > MaxTitleLength)
+            throw new ArgumentException($"Title cannot exceed {MaxTitleLength} characters", nameof(title));
+
         Title = title;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateDescription(string? description)
     {
+        // Sanitize and validate description
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            description = description.Trim();
+            if (description.Length > MaxDescriptionLength)
+                throw new ArgumentException($"Description cannot exceed {MaxDescriptionLength} characters", nameof(description));
+        }
+
         Description = description;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -72,9 +102,22 @@ public class TodoItem
 
     public void StartTask()
     {
-        if (Status == TodoStatus.NotStarted)
+        // Allow starting/restarting tasks that are not already in progress
+        if (Status != TodoStatus.InProgress)
         {
-            StartDate = DateTime.UtcNow;
+            // If restarting a completed or cancelled task, reset completion state
+            if (Status == TodoStatus.Completed || Status == TodoStatus.Cancelled)
+            {
+                IsCompleted = false;
+                CompletedAt = null;
+            }
+
+            // Set or update start date if not set
+            if (!StartDate.HasValue)
+            {
+                StartDate = DateTime.UtcNow;
+            }
+
             Status = TodoStatus.InProgress;
             UpdatedAt = DateTime.UtcNow;
         }
