@@ -58,7 +58,13 @@ var host = Host.CreateDefaultBuilder(args)
     {
         config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
     })
-    .UseSerilog() // Use Serilog for all logging - THIS IS CRITICAL
+    .ConfigureLogging(logging =>
+    {
+        // CRITICAL: Clear all default logging providers (especially console)
+        // This prevents ANY output to stdout/stderr from the host builder
+        logging.ClearProviders();
+    })
+    .UseSerilog() // Use Serilog for all logging - file-based only
     .ConfigureServices((context, services) =>
     {
         // Configure MCP Server Settings
