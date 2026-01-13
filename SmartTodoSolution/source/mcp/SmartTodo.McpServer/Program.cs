@@ -13,6 +13,18 @@ using SmartTodo.McpServer.Resources;
 using SmartTodo.McpServer.Server;
 using SmartTodo.McpServer.Tools;
 
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.File(
+        path: "logs/mcp-server-.log",
+        rollingInterval: RollingInterval.Day,
+        restrictedToMinimumLevel: LogEventLevel.Information
+    )
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Extensions.Hosting", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .CreateLogger();
+
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
     {
@@ -37,25 +49,8 @@ var host = Host.CreateDefaultBuilder(args)
         
         // Add Background Service
         services.AddHostedService<McpServerBackgroundService>();
-    })
-    //.ConfigureLogging((context, logging) =>
-    //{
-    //    ////logging.ClearProviders();
-
-    //    ////logging.AddFilter("Microsoft", LogLevel.Warning);
-    //    ////logging.AddFilter("System", LogLevel.Warning);
-    //    ////logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
-    //    ////logging.AddConsole();
-    //    ////logging.SetMinimumLevel(LogLevel.Information);
-    //})
+    })   
     .Build();
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Seq("http://localhost:5341")
-    .MinimumLevel.Verbose()
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.Extensions.Hosting", LogEventLevel.Information)
-    .MinimumLevel.Override("Microsoft.Hosting", LogEventLevel.Information)
-    .CreateLogger();
 
 await host.RunAsync();
 
