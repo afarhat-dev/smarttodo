@@ -17,10 +17,7 @@ using SmartTodo.McpServer.Tools;
 // Logs go to stderr (for MCP compliance), files, and optionally Seq
 
 var loggerConfig = new LoggerConfiguration()
-    .WriteTo.Console(
-        standardErrorStream: true, // Critical: Write to stderr, NOT stdout
-        restrictedToMinimumLevel: LogEventLevel.Information
-    )
+    .WriteTo.Console(System.Console.Error) // Critical: Write to stderr, NOT stdout
     .WriteTo.File(
         path: "logs/mcp-server-.log",
         rollingInterval: RollingInterval.Day,
@@ -35,10 +32,7 @@ var loggerConfig = new LoggerConfiguration()
 try
 {
     loggerConfig.WriteTo.Seq(
-        serverUrl: "http://localhost:5341/",
-        restrictedToMinimumLevel: LogEventLevel.Information,
-        apiKey: null,
-        compact: true
+        serverUrl: "http://localhost:5341/"
     );
 }
 catch (Exception ex)
