@@ -1,15 +1,17 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
+using Serilog;
+using Serilog.Events;
 using SmartTodo.Application.Interfaces;
 using SmartTodo.Application.Services;
 using SmartTodo.Infrastructure.Repositories;
 using SmartTodo.McpServer.Configuration;
+using SmartTodo.McpServer.Prompts;
+using SmartTodo.McpServer.Resources;
 using SmartTodo.McpServer.Server;
 using SmartTodo.McpServer.Tools;
-using SmartTodo.McpServer.Resources;
-using SmartTodo.McpServer.Prompts;
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
@@ -26,26 +28,34 @@ var host = Host.CreateDefaultBuilder(args)
         // Register Application Layer Services
         services.AddSingleton<ITodoRepository, InMemoryTodoRepository>();
         services.AddScoped<ITodoService, TodoService>();
-
+        services.AddSerilog();
         // Register MCP Server Components
         services.AddSingleton<TodoToolHandler>();
         services.AddSingleton<TodoResourceHandler>();
         services.AddSingleton<TodoPromptHandler>();
         services.AddSingleton<McpServerHost>();
-
+        
         // Add Background Service
         services.AddHostedService<McpServerBackgroundService>();
     })
-    .ConfigureLogging((context, logging) =>
-    {
-        logging.ClearProviders();
-        //logging.AddFilter("Microsoft", LogLevel.Warning);
-        //logging.AddFilter("System", LogLevel.Warning);
-        //logging.AddProvider.File("logs/mcpserver.log");
-        //  logging.AddConsole();
-        //logging.SetMinimumLevel(LogLevel.Information);
-    })
+    //.ConfigureLogging((context, logging) =>
+    //{
+    //    ////logging.ClearProviders();
+
+    //    ////logging.AddFilter("Microsoft", LogLevel.Warning);
+    //    ////logging.AddFilter("System", LogLevel.Warning);
+    //    ////logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+    //    ////logging.AddConsole();
+    //    ////logging.SetMinimumLevel(LogLevel.Information);
+    //})
     .Build();
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Seq("http://localhost:5341")
+    .MinimumLevel.Verbose()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Extensions.Hosting", LogEventLevel.Information)
+    .MinimumLevel.Override("Microsoft.Hosting", LogEventLevel.Information)
+    .CreateLogger();
 
 await host.RunAsync();
 
