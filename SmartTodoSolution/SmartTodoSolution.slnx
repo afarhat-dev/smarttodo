@@ -10,6 +10,11 @@
   <Folder Name="/source/mcp/">
     <Project Path="source/mcp/SmartTodo.McpServer/SmartTodo.McpServer.csproj" Id="4a753d27-515c-40ff-bc0b-bf46604d5db4" />
   </Folder>
+  <Folder Name="/source/tests/">
+    <Project Path="tests/SmartTodo.Application.Tests/SmartTodo.Application.Tests.csproj" />
+    <Project Path="tests/SmartTodo.Domain.Tests/SmartTodo.Domain.Tests.csproj" />
+    <Project Path="tests/SmartTodo.McpServer.Tests/SmartTodo.McpServer.Tests.csproj" />
+  </Folder>
   <Folder Name="/source/ui/">
     <Project Path="source/ui/StdApi/StdApi.csproj" Id="8a753d27-515c-40ff-bc0b-bf46604d5dbe" />
   </Folder>

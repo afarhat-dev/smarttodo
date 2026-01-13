@@ -5,7 +5,7 @@ using SmartTodo.Application.Interfaces;
 using SmartTodo.Application.Services;
 using SmartTodo.Domain.Entities;
 using SmartTodo.Domain.Enums;
-
+using Xunit;
 namespace SmartTodo.Application.Tests.Services;
 
 public class TodoServiceTests
@@ -133,10 +133,10 @@ public class TodoServiceTests
     {
         // Arrange
         var createDto = new CreateTodoItemDto
-        {
-            Title = "New Todo",
-            Description = "New Description"
-        };
+        (
+            "New Todo",
+            "New Description"
+        );
         _mockRepository.Setup(r => r.AddAsync(It.IsAny<TodoItem>()))
             .ReturnsAsync((TodoItem todo) => todo);
 
@@ -162,11 +162,13 @@ public class TodoServiceTests
         // Arrange
         var id = Guid.NewGuid();
         var todoItem = new TodoItem("Original Title", "Original Description");
-        var updateDto = new UpdateTodoItemDto
-        {
-            Title = "Updated Title",
-            Description = "Updated Description"
-        };
+        var updateDto = new SmartTodo.Application.DTOs.UpdateTodoItemDto
+        (
+            "Updated Title",
+            "Updated Description",           
+            false,
+            TodoStatus.NotStarted
+        );
 
         _mockRepository.Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync(todoItem);
@@ -189,7 +191,7 @@ public class TodoServiceTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var updateDto = new UpdateTodoItemDto { Title = "Updated Title" };
+        var updateDto = new UpdateTodoItemDto("Updated Title",null,null,null);// ( Title = );
         _mockRepository.Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync((TodoItem?)null);
 
@@ -208,10 +210,7 @@ public class TodoServiceTests
         // Arrange
         var id = Guid.NewGuid();
         var todoItem = new TodoItem("Test Todo");
-        var updateDto = new UpdateTodoItemDto
-        {
-            Status = TodoStatus.InProgress
-        };
+        var updateDto = new UpdateTodoItemDto(null, null, null, TodoStatus.InProgress);
 
         _mockRepository.Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync(todoItem);
@@ -233,10 +232,7 @@ public class TodoServiceTests
         // Arrange
         var id = Guid.NewGuid();
         var todoItem = new TodoItem("Test Todo");
-        var updateDto = new UpdateTodoItemDto
-        {
-            IsCompleted = true
-        };
+        var updateDto = new UpdateTodoItemDto(null, null, true, null);
 
         _mockRepository.Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync(todoItem);
