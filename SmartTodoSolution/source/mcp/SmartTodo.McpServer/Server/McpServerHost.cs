@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using SmartTodo.McpServer.Configuration;
 using SmartTodo.McpServer.Protocol;
@@ -32,7 +33,8 @@ public class McpServerHost
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false // CRITICAL: Must be false for stdio JSON-RPC (single line per message)
+            WriteIndented = false, // CRITICAL: Must be false for stdio JSON-RPC (single line per message)
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull // Omit null fields (JSON-RPC requires either result OR error, not both)
         };
     }
 
