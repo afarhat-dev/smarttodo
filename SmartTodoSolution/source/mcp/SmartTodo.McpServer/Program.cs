@@ -19,9 +19,14 @@ using SmartTodo.McpServer.Tools;
 // Logs only to files and Seq (NOT to console to avoid stdout/stderr issues)
 // MCP protocol requires stdout for JSON-RPC messages only
 
+// Determine the log directory - use base directory to ensure logs are always in the right place
+var logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+System.IO.Directory.CreateDirectory(logDirectory);
+var logPath = Path.Combine(logDirectory, "mcp-server-.log");
+
 var loggerConfig = new LoggerConfiguration()
     .WriteTo.File(
-        path: "logs/mcp-server-.log",
+        path: logPath,
         rollingInterval: RollingInterval.Day,
         restrictedToMinimumLevel: LogEventLevel.Information
     )
@@ -43,8 +48,8 @@ catch (Exception ex)
     // Log startup warning to file instead of console
     try
     {
-        System.IO.Directory.CreateDirectory("logs");
-        System.IO.File.AppendAllText("logs/startup.log",
+        var startupLogPath = Path.Combine(logDirectory, "startup.log");
+        System.IO.File.AppendAllText(startupLogPath,
             $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - Warning: Could not configure Seq logging: {ex.Message}\n");
     }
     catch
@@ -58,7 +63,64 @@ Log.Logger = loggerConfig.CreateLogger();
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
     {
-        config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        // Clear default configuration sources to have more control
+        config.Sources.Clear();
+
+        // Strategy: Try multiple locations for appsettings.json
+        // 1. AppContext.BaseDirectory (bin output directory - where DLL runs)
+        // 2. Current working directory (useful when run with dotnet run)
+        // 3. Project root (fallback for development)
+
+        var baseDir = AppContext.BaseDirectory;
+        var workingDir = Environment.CurrentDirectory;
+
+        // Check where appsettings.json exists
+        var appSettingsInBase = Path.Combine(baseDir, "appsettings.json");
+        var appSettingsInWorking = Path.Combine(workingDir, "appsettings.json");
+
+        string? configPath = null;
+        if (File.Exists(appSettingsInBase))
+        {
+            configPath = baseDir;
+        }
+        else if (File.Exists(appSettingsInWorking))
+        {
+            configPath = workingDir;
+        }
+
+        // Set base path and add configuration
+        if (configPath != null)
+        {
+            config.SetBasePath(configPath);
+        }
+        else
+        {
+            config.SetBasePath(baseDir); // Default to base directory
+        }
+
+        config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+        config.AddEnvironmentVariables();
+
+        // Log the configuration path for debugging
+        try
+        {
+            var logDir = Path.Combine(configPath ?? baseDir, "logs");
+            System.IO.Directory.CreateDirectory(logDir);
+            var logFile = Path.Combine(logDir, "startup.log");
+
+            System.IO.File.AppendAllText(logFile,
+                $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - Configuration base: {configPath ?? baseDir}\n");
+            System.IO.File.AppendAllText(logFile,
+                $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - AppContext.BaseDirectory: {baseDir}\n");
+            System.IO.File.AppendAllText(logFile,
+                $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - Working directory: {workingDir}\n");
+            System.IO.File.AppendAllText(logFile,
+                $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - Config found at: {(File.Exists(Path.Combine(configPath ?? baseDir, "appsettings.json")) ? "YES" : "NO")}\n");
+        }
+        catch
+        {
+            // Ignore logging errors
+        }
     })
     .ConfigureLogging(logging =>
     {
