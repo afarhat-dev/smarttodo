@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -6,6 +7,7 @@ using Serilog;
 using Serilog.Events;
 using SmartTodo.Application.Interfaces;
 using SmartTodo.Application.Services;
+using SmartTodo.Infrastructure.Persistence;
 using SmartTodo.Infrastructure.Repositories;
 using SmartTodo.McpServer.Configuration;
 using SmartTodo.McpServer.Prompts;
@@ -71,13 +73,48 @@ var host = Host.CreateDefaultBuilder(args)
         var mcpSettings = new McpServerSettings();
         context.Configuration.GetSection("McpServer").Bind(mcpSettings);
         services.AddSingleton(mcpSettings);
-        // Register Application Layer Services
-        // Both must be singleton since handlers are singleton
-        services.AddSingleton<ITodoRepository, InMemoryTodoRepository>();
-        services.AddSingleton<ITodoService, TodoService>();
-        // Register MCP Server Components
-        services.AddSingleton<TodoToolHandler>();
-        services.AddSingleton<TodoResourceHandler>();
+
+        // Configure Database - check if UsePostgreSQL is enabled
+        var usePostgreSql = context.Configuration.GetValue<bool>("Database:UsePostgreSQL");
+
+        if (usePostgreSql)
+        {
+            // PostgreSQL configuration
+            var connectionString = context.Configuration.GetConnectionString("PostgreSQL");
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("PostgreSQL connection string is not configured. Please add 'ConnectionStrings:PostgreSQL' to appsettings.json");
+            }
+
+            // Register DbContext as singleton with pooling for better performance
+            services.AddDbContextPool<TodoDbContext>(options =>
+                options.UseNpgsql(connectionString));
+
+            // Register as transient to get new instances with each DbContext
+            services.AddTransient<ITodoRepository, PostgreSqlTodoRepository>();
+            services.AddTransient<ITodoService, TodoService>();
+
+            // Register handlers as transient too
+            services.AddTransient<TodoToolHandler>();
+            services.AddTransient<TodoResourceHandler>();
+
+            Log.Information("Using PostgreSQL database");
+        }
+        else
+        {
+            // In-Memory configuration
+            services.AddSingleton<ITodoRepository, InMemoryTodoRepository>();
+            services.AddSingleton<ITodoService, TodoService>();
+
+            // Register handlers as singletons
+            services.AddSingleton<TodoToolHandler>();
+            services.AddSingleton<TodoResourceHandler>();
+
+            Log.Information("Using In-Memory database");
+        }
+
+        // These are always singletons
         services.AddSingleton<TodoPromptHandler>();
         services.AddSingleton<McpServerHost>();
         // Add Background Service
