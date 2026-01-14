@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SmartTodo.McpServer.Configuration;
 using SmartTodo.McpServer.Protocol;
@@ -12,22 +13,19 @@ namespace SmartTodo.McpServer.Server;
 public class McpServerHost
 {
     private readonly McpServerSettings _settings;
-    private readonly TodoToolHandler _toolHandler;
-    private readonly TodoResourceHandler _resourceHandler;
+    private readonly IServiceProvider _serviceProvider;
     private readonly TodoPromptHandler _promptHandler;
     private readonly ILogger<McpServerHost> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public McpServerHost(
         McpServerSettings settings,
-        TodoToolHandler toolHandler,
-        TodoResourceHandler resourceHandler,
+        IServiceProvider serviceProvider,
         TodoPromptHandler promptHandler,
         ILogger<McpServerHost> logger)
     {
         _settings = settings;
-        _toolHandler = toolHandler;
-        _resourceHandler = resourceHandler;
+        _serviceProvider = serviceProvider;
         _promptHandler = promptHandler;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
@@ -199,7 +197,9 @@ public class McpServerHost
             toolParams = args;
         }
 
-        var result = await _toolHandler.HandleToolCallAsync(toolName, toolParams);
+        // Resolve handler from service provider to support transient lifetime
+        var toolHandler = _serviceProvider.GetRequiredService<TodoToolHandler>();
+        var result = await toolHandler.HandleToolCallAsync(toolName, toolParams);
 
         return new
         {
@@ -234,7 +234,9 @@ public class McpServerHost
 
         _logger.LogInformation("Reading resource: {Uri}", uri);
 
-        var result = await _resourceHandler.GetResourceAsync(uri);
+        // Resolve handler from service provider to support transient lifetime
+        var resourceHandler = _serviceProvider.GetRequiredService<TodoResourceHandler>();
+        var result = await resourceHandler.GetResourceAsync(uri);
 
         return new
         {
