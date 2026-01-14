@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: smarttodo-postgres
+    environment:
+      POSTGRES_DB: smarttodo
+      POSTGRES_USER: stododev
+      POSTGRES_PASSWORD: P@ssw0rd
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stododev -d smarttodo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarttodo-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smarttodo-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:8080
+      - Database__UsePostgreSQL=true
+      - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=smarttodo;Username=stododev;Password=P@ssw0rd
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - smarttodo-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  smarttodo-network:
+    driver: bridge
