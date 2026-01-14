@@ -1,13 +1,47 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using SmartTodo.Application.Interfaces;
 using SmartTodo.Application.Services;
+using SmartTodo.Infrastructure.Persistence;
 using SmartTodo.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddScoped<ITodoRepository, InMemoryTodoRepository>();
-builder.Services.AddScoped<ITodoService, TodoService>();
+var usePostgreSql = builder.Configuration.GetValue<bool>("Database:UsePostgreSQL");
+
+if (usePostgreSql)
+{
+    // PostgreSQL configuration
+    var connectionString = builder.Configuration.GetConnectionString("PostgreSQL");
+
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        throw new InvalidOperationException(
+            "PostgreSQL connection string is not configured. " +
+            "Please set ConnectionStrings:PostgreSQL in appsettings.json");
+    }
+
+    builder.Services.AddDbContextPool<TodoDbContext>(options =>
+        options.UseNpgsql(connectionString));
+
+    builder.Services.AddScoped<ITodoRepository, PostgreSqlTodoRepository>();
+    builder.Services.AddScoped<ITodoService, TodoService>();
+
+    builder.Logging.AddConsole();
+    builder.Logging.AddDebug();
+    Console.WriteLine("Using PostgreSQL database");
+}
+else
+{
+    // In-Memory configuration
+    builder.Services.AddScoped<ITodoRepository, InMemoryTodoRepository>();
+    builder.Services.AddScoped<ITodoService, TodoService>();
+
+    Console.WriteLine("Using In-Memory database");
+}
+
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

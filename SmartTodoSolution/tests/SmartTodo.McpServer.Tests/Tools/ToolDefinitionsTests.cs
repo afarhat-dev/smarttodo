@@ -1,0 +1,184 @@
+using FluentAssertions;
+using SmartTodo.McpServer.Tools;
+using Xunit;
+namespace SmartTodo.McpServer.Tests.Tools;
+
+public class ToolDefinitionsTests
+{
+    [Fact]
+    public void GetAllTools_ShouldReturn10Tools()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        tools.Should().HaveCount(10);
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainCreateTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var createTool = tools.FirstOrDefault(t => t.Name == "create_todo");
+        createTool.Should().NotBeNull();
+        createTool!.Description.Should().Be("Create a new todo item");
+        createTool.InputSchema.Properties.Should().ContainKey("title");
+        createTool.InputSchema.Properties.Should().ContainKey("description");
+        createTool.InputSchema.Required.Should().Contain("title");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainGetTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var getTool = tools.FirstOrDefault(t => t.Name == "get_todo");
+        getTool.Should().NotBeNull();
+        getTool!.Description.Should().Be("Retrieve a specific todo item by ID");
+        getTool.InputSchema.Properties.Should().ContainKey("id");
+        getTool.InputSchema.Required.Should().Contain("id");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainListTodosTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var listTool = tools.FirstOrDefault(t => t.Name == "list_todos");
+        listTool.Should().NotBeNull();
+        listTool!.Description.Should().Contain("Get all todos");
+        listTool.InputSchema.Properties.Should().ContainKey("status");
+        listTool.InputSchema.Properties.Should().ContainKey("isCompleted");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainUpdateTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var updateTool = tools.FirstOrDefault(t => t.Name == "update_todo");
+        updateTool.Should().NotBeNull();
+        updateTool!.Description.Should().Be("Update an existing todo item");
+        updateTool.InputSchema.Required.Should().Contain("id");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainDeleteTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var deleteTool = tools.FirstOrDefault(t => t.Name == "delete_todo");
+        deleteTool.Should().NotBeNull();
+        deleteTool!.Description.Should().Be("Delete a todo item by ID");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainStartTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var startTool = tools.FirstOrDefault(t => t.Name == "start_todo");
+        startTool.Should().NotBeNull();
+        startTool!.Description.Should().Contain("Mark a todo as started");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainCompleteTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var completeTool = tools.FirstOrDefault(t => t.Name == "complete_todo");
+        completeTool.Should().NotBeNull();
+        completeTool!.Description.Should().Be("Mark a todo as completed");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainPauseTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var pauseTool = tools.FirstOrDefault(t => t.Name == "pause_todo");
+        pauseTool.Should().NotBeNull();
+        pauseTool!.Description.Should().Be("Put a todo on hold");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainResumeTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var resumeTool = tools.FirstOrDefault(t => t.Name == "resume_todo");
+        resumeTool.Should().NotBeNull();
+        resumeTool!.Description.Should().Be("Resume a paused todo");
+    }
+
+    [Fact]
+    public void GetAllTools_ShouldContainCancelTodoTool()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var cancelTool = tools.FirstOrDefault(t => t.Name == "cancel_todo");
+        cancelTool.Should().NotBeNull();
+        cancelTool!.Description.Should().Be("Cancel a todo item");
+    }
+
+    [Theory]
+    [InlineData("create_todo")]
+    [InlineData("get_todo")]
+    [InlineData("list_todos")]
+    [InlineData("update_todo")]
+    [InlineData("delete_todo")]
+    [InlineData("start_todo")]
+    [InlineData("complete_todo")]
+    [InlineData("pause_todo")]
+    [InlineData("resume_todo")]
+    [InlineData("cancel_todo")]
+    public void GetAllTools_AllToolsShouldHaveInputSchema(string toolName)
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var tool = tools.FirstOrDefault(t => t.Name == toolName);
+        tool.Should().NotBeNull();
+        tool!.InputSchema.Should().NotBeNull();
+        tool.InputSchema.Type.Should().Be("object");
+    }
+
+    [Fact]
+    public void GetAllTools_StatusEnumShouldHaveAllValues()
+    {
+        // Act
+        var tools = ToolDefinitions.GetAllTools();
+
+        // Assert
+        var listTool = tools.First(t => t.Name == "list_todos");
+        var statusProperty = listTool.InputSchema.Properties["status"];
+        statusProperty.Enum.Should().NotBeNull();
+        statusProperty.Enum.Should().HaveCount(5);
+        statusProperty.Enum.Should().Contain(new[] {
+            "NotStarted", "InProgress", "OnHold", "Completed", "Cancelled"
+        });
+    }
+}
