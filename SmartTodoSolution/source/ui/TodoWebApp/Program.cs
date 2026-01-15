@@ -1,7 +1,18 @@
+using Serilog;
 using TodoWebApp.Components;
 using TodoWebApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "SmartTodo.WebApp")
+        .Enrich.WithMachineName();
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -17,6 +28,9 @@ builder.Services.AddHttpClient<ITodoApiService, TodoApiService>(client =>
 
 var app = builder.Build();
 
+// Configure Serilog request logging
+app.UseSerilogRequestLogging();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -31,4 +45,16 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.Run();
+try
+{
+    Log.Information("Starting SmartTodo WebApp");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
