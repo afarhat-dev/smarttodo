@@ -1,25 +1,6 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: smarttodo-postgres
-    environment:
-      POSTGRES_DB: smarttodo
-      POSTGRES_USER: stododev
-      POSTGRES_PASSWORD: P@ssw0rd
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stododev -d smarttodo"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - smarttodo-network
-
   api:
     build:
       context: .
@@ -29,20 +10,13 @@ services:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:8080
       - Database__UsePostgreSQL=true
-      - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=smarttodo;Username=stododev;Password=P@ssw0rd
+      # Connection string can be set via .env file or updated directly below
+      - ConnectionStrings__PostgreSQL=${POSTGRES_CONNECTION_STRING:-Host=host.docker.internal;Port=5432;Database=smarttodo;Username=stododev;Password=P@ssw0rd}
     ports:
       - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - smarttodo-network
+    # If using network_mode: host, uncomment below and comment out ports section
+    # network_mode: host
     restart: unless-stopped
-
-volumes:
-  postgres_data:
-    driver: local
-
-networks:
-  smarttodo-network:
-    driver: bridge
+    extra_hosts:
+      # Enables host.docker.internal on Linux
+      - "host.docker.internal:host-gateway"
