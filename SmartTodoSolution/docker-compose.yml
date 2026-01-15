@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smarttodo-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:8080
+      - Database__UsePostgreSQL=true
+      # Connection string can be set via .env file or updated directly below
+      - ConnectionStrings__PostgreSQL=${POSTGRES_CONNECTION_STRING:-Host=host.docker.internal;Port=5432;Database=smarttodo;Username=stododev;Password=P@ssw0rd}
+    ports:
+      - "8080:8080"
+    # If using network_mode: host, uncomment below and comment out ports section
+    # network_mode: host
+    restart: unless-stopped
+    extra_hosts:
+      # Enables host.docker.internal on Linux
+      - "host.docker.internal:host-gateway"
