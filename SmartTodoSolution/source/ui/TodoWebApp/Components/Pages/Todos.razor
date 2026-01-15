@@ -1,0 +1,230 @@
+@page "/todos"
+@using TodoWebApp.Services
+@using TodoWebApp.Models
+@inject ITodoApiService TodoApi
+@rendermode InteractiveServer
+
+<PageTitle>Todos</PageTitle>
+
+<h1>Todo List</h1>
+
+@if (isLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+}
+else
+{
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <button class="btn btn-primary" @onclick="ShowCreateDialog">
+                <span>➕</span> Add New Todo
+            </button>
+            <button class="btn btn-secondary ms-2" @onclick="LoadTodos">
+                <span>🔄</span> Refresh
+            </button>
+        </div>
+    </div>
+
+    @if (showCreateDialog)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Create New Todo</h5>
+                <div class="mb-3">
+                    <label for="newTitle" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="newTitle" @bind="newTodoTitle" placeholder="Enter todo title" />
+                </div>
+                <div class="mb-3">
+                    <label for="newDescription" class="form-label">Description (Optional)</label>
+                    <textarea class="form-control" id="newDescription" @bind="newTodoDescription" rows="3" placeholder="Enter description"></textarea>
+                </div>
+                <button class="btn btn-success" @onclick="CreateTodo">Create</button>
+                <button class="btn btn-secondary ms-2" @onclick="HideCreateDialog">Cancel</button>
+                @if (!string.IsNullOrEmpty(createError))
+                {
+                    <div class="alert alert-danger mt-2">@createError</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (todos.Count == 0)
+    {
+        <div class="alert alert-info">
+            No todos found. Create your first todo to get started!
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <span class="badge bg-primary">Total: @todos.Count</span>
+                    <span class="badge bg-success ms-2">Completed: @todos.Count(t => t.IsCompleted)</span>
+                    <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == "InProgress")</span>
+                    <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == "NotStarted")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Created</th>
+                        <th>Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var todo in todos.OrderByDescending(t => t.CreatedAt))
+                    {
+                        <tr class="@(todo.IsCompleted ? "table-success" : "")">
+                            <td>
+                                <span class="badge @GetStatusBadgeClass(todo.Status)">
+                                    @todo.Status
+                                </span>
+                            </td>
+                            <td>
+                                @if (todo.IsCompleted)
+                                {
+                                    <del>@todo.Title</del>
+                                }
+                                else
+                                {
+                                    <strong>@todo.Title</strong>
+                                }
+                            </td>
+                            <td>@(string.IsNullOrEmpty(todo.Description) ? "-" : todo.Description)</td>
+                            <td>@todo.CreatedAt.ToString("g")</td>
+                            <td>@todo.UpdatedAt.ToString("g")</td>
+                            <td>
+                                @if (!todo.IsCompleted)
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => ToggleComplete(todo)">
+                                        ✓ Complete
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-warning" @onclick="() => ToggleComplete(todo)">
+                                        ↶ Reopen
+                                    </button>
+                                }
+                                <button class="btn btn-sm btn-danger ms-1" @onclick="() => DeleteTodo(todo.Id)">
+                                    🗑 Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private List<TodoItemDto> todos = new();
+    private bool isLoading = true;
+    private bool showCreateDialog = false;
+    private string newTodoTitle = string.Empty;
+    private string newTodoDescription = string.Empty;
+    private string createError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTodos();
+    }
+
+    private async Task LoadTodos()
+    {
+        isLoading = true;
+        todos = await TodoApi.GetAllTodosAsync();
+        isLoading = false;
+    }
+
+    private void ShowCreateDialog()
+    {
+        showCreateDialog = true;
+        newTodoTitle = string.Empty;
+        newTodoDescription = string.Empty;
+        createError = string.Empty;
+    }
+
+    private void HideCreateDialog()
+    {
+        showCreateDialog = false;
+    }
+
+    private async Task CreateTodo()
+    {
+        if (string.IsNullOrWhiteSpace(newTodoTitle))
+        {
+            createError = "Title is required";
+            return;
+        }
+
+        var request = new CreateTodoRequest
+        {
+            Title = newTodoTitle.Trim(),
+            Description = string.IsNullOrWhiteSpace(newTodoDescription) ? null : newTodoDescription.Trim()
+        };
+
+        var result = await TodoApi.CreateTodoAsync(request);
+        if (result != null)
+        {
+            await LoadTodos();
+            HideCreateDialog();
+        }
+        else
+        {
+            createError = "Failed to create todo. Please try again.";
+        }
+    }
+
+    private async Task ToggleComplete(TodoItemDto todo)
+    {
+        todo.IsCompleted = !todo.IsCompleted;
+        todo.UpdatedAt = DateTime.UtcNow;
+
+        if (todo.IsCompleted)
+        {
+            todo.CompletedAt = DateTime.UtcNow;
+            todo.Status = "Completed";
+        }
+        else
+        {
+            todo.CompletedAt = null;
+            todo.Status = "NotStarted";
+        }
+
+        await TodoApi.UpdateTodoAsync(todo.Id, todo);
+        await LoadTodos();
+    }
+
+    private async Task DeleteTodo(Guid id)
+    {
+        if (await TodoApi.DeleteTodoAsync(id))
+        {
+            await LoadTodos();
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "NotStarted" => "bg-secondary",
+            "InProgress" => "bg-warning",
+            "Completed" => "bg-success",
+            "OnHold" => "bg-info",
+            "Cancelled" => "bg-dark",
+            _ => "bg-secondary"
+        };
+    }
+}

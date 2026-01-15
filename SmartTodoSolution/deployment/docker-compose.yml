@@ -7,11 +7,46 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: P@ssw0rd
-      POSTGRES_DB: mydb
+      POSTGRES_DB: smarttodo
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d smarttodo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: smarttodo-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - Database__UsePostgreSQL=true
+      - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=smarttodo;Username=admin;Password=P@ssw0rd
+    ports:
+      - "5208:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  webapp:
+    build:
+      context: ..
+      dockerfile: Dockerfile.webapp
+    container_name: smarttodo-webapp
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ApiSettings__BaseUrl=http://api:8080
+    ports:
+      - "5209:8080"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
