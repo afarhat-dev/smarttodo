@@ -30,11 +30,11 @@ else
                 <label class="input-group-text">Filter by Status:</label>
                 <select class="form-select" @bind="selectedStatusFilter" @bind:after="OnFilterChanged">
                     <option value="">All</option>
-                    <option value="NotStarted">Not Started</option>
-                    <option value="InProgress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="OnHold">On Hold</option>
-                    <option value="Cancelled">Cancelled</option>
+                    <option value="0">Not Started</option>
+                    <option value="1">In Progress</option>
+                    <option value="2">Completed</option>
+                    <option value="3">On Hold</option>
+                    <option value="4">Cancelled</option>
                 </select>
             </div>
         </div>
@@ -66,13 +66,13 @@ else
     @if (FilteredTodos.Count == 0)
     {
         <div class="alert alert-info">
-            @if (string.IsNullOrEmpty(selectedStatusFilter))
+            @if (!selectedStatusFilter.HasValue)
             {
                 <text>No todos found. Create your first todo to get started!</text>
             }
             else
             {
-                <text>No todos found with status "@selectedStatusFilter". Try a different filter.</text>
+                <text>No todos found with status "@GetStatusDisplayName(selectedStatusFilter.Value)". Try a different filter.</text>
             }
         </div>
     }
@@ -82,14 +82,14 @@ else
             <div class="col-md-12">
                 <div class="mb-3">
                     <span class="badge bg-primary">Showing: @FilteredTodos.Count</span>
-                    @if (!string.IsNullOrEmpty(selectedStatusFilter))
+                    @if (selectedStatusFilter.HasValue)
                     {
-                        <span class="badge bg-info ms-2">Filtered by: @selectedStatusFilter</span>
+                        <span class="badge bg-info ms-2">Filtered by: @GetStatusDisplayName(selectedStatusFilter.Value)</span>
                     }
                     <span class="badge bg-secondary ms-2">Total: @todos.Count</span>
                     <span class="badge bg-success ms-2">Completed: @todos.Count(t => t.IsCompleted)</span>
-                    <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == 1 /*"InProgress"*/)</span>
-                    <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == 0 /*"NotStarted"*/)</span>
+                    <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == 1)</span>
+                    <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == 0)</span>
                 </div>
             </div>
         </div>
@@ -161,37 +161,17 @@ else
     private string newTodoTitle = string.Empty;
     private string newTodoDescription = string.Empty;
     private string createError = string.Empty;
-    private string selectedStatusFilter = string.Empty;
+    private int? selectedStatusFilter = null;
 
     private List<TodoItemDto> FilteredTodos
     {
         get
         {
-            int status = 0;
-            switch (selectedStatusFilter)
-            {
-                case "NotStarted":
-                    status = 0;
-                    break;
-                case "InProgress":
-                    status = 1;
-                    break;
-                case "Completed":
-                    status = 2;
-                    break;
-                case "OnHold":
-                    status = 3;
-                    break;
-                case "Cancelled":
-                    status = 3;
-                    break;
-
-            }
-            if (string.IsNullOrEmpty(selectedStatusFilter))
+            if (!selectedStatusFilter.HasValue)
             {
                 return todos;
             }
-            return todos.Where(t => t.Status == status).ToList();
+            return todos.Where(t => t.Status == selectedStatusFilter.Value).ToList();
         }
     }
 
@@ -204,6 +184,19 @@ else
     {
         // This method is called after the filter changes
         // The UI will automatically refresh due to the FilteredTodos property
+    }
+
+    private string GetStatusDisplayName(int status)
+    {
+        return status switch
+        {
+            0 => "Not Started",
+            1 => "In Progress",
+            2 => "Completed",
+            3 => "On Hold",
+            4 => "Cancelled",
+            _ => "Unknown"
+        };
     }
 
     private async Task LoadTodos()
