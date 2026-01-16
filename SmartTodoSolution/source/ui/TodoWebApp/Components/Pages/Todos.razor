@@ -63,8 +63,8 @@ else
                 <div class="mb-3">
                     <span class="badge bg-primary">Total: @todos.Count</span>
                     <span class="badge bg-success ms-2">Completed: @todos.Count(t => t.IsCompleted)</span>
-                    <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == "InProgress")</span>
-                    <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == "NotStarted")</span>
+                    <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == 1 /*"InProgress"*/)</span>
+                    <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == 0 /*"NotStarted"*/)</span>
                 </div>
             </div>
         </div>
@@ -84,10 +84,11 @@ else
                 <tbody>
                     @foreach (var todo in todos.OrderByDescending(t => t.CreatedAt))
                     {
+                       
                         <tr class="@(todo.IsCompleted ? "table-success" : "")">
                             <td>
-                                <span class="badge @GetStatusBadgeClass(todo.Status)">
-                                    @todo.Status
+                                <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
+                                    @(todo.Status ==0? "Pending":todo.Status == 1? "Started":"Completed")
                                 </span>
                             </td>
                             <td>
@@ -195,12 +196,12 @@ else
         if (todo.IsCompleted)
         {
             todo.CompletedAt = DateTime.UtcNow;
-            todo.Status = "Completed";
+            todo.Status = 2;//"Completed";
         }
         else
         {
             todo.CompletedAt = null;
-            todo.Status = "NotStarted";
+            todo.Status = 0;//"NotStarted";
         }
 
         await TodoApi.UpdateTodoAsync(todo.Id, todo);
