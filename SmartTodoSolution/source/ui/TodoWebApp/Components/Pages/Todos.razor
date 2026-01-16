@@ -109,11 +109,11 @@ else
                 <tbody>
                     @foreach (var todo in FilteredTodos.OrderByDescending(t => t.CreatedAt))
                     {
-                       
+
                         <tr class="@(todo.IsCompleted ? "table-success" : "")">
                             <td>
                                 <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
-                                    @(todo.Status ==0? "Pending":todo.Status == 1? "Started":"Completed")
+                                    @(todo.Status == 0 ? "Pending" : todo.Status == 1 ? "Started" : "Completed")
                                 </span>
                             </td>
                             <td>
@@ -167,11 +167,31 @@ else
     {
         get
         {
+            int status = 0;
+            switch (selectedStatusFilter)
+            {
+                case "NotStarted":
+                    status = 0;
+                    break;
+                case "InProgress":
+                    status = 1;
+                    break;
+                case "Completed":
+                    status = 2;
+                    break;
+                case "OnHold":
+                    status = 3;
+                    break;
+                case "Cancelled":
+                    status = 3;
+                    break;
+
+            }
             if (string.IsNullOrEmpty(selectedStatusFilter))
             {
                 return todos;
             }
-            return todos.Where(t => t.Status == selectedStatusFilter).ToList();
+            return todos.Where(t => t.Status == status).ToList();
         }
     }
 
