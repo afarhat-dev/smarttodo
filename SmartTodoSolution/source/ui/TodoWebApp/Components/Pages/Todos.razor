@@ -17,13 +17,26 @@
 else
 {
     <div class="row mb-3">
-        <div class="col-md-12">
+        <div class="col-md-8">
             <button class="btn btn-primary" @onclick="ShowCreateDialog">
                 <span>➕</span> Add New Todo
             </button>
             <button class="btn btn-secondary ms-2" @onclick="LoadTodos">
                 <span>🔄</span> Refresh
             </button>
+        </div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <label class="input-group-text">Filter by Status:</label>
+                <select class="form-select" @bind="selectedStatusFilter" @bind:after="OnFilterChanged">
+                    <option value="">All</option>
+                    <option value="NotStarted">Not Started</option>
+                    <option value="InProgress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="OnHold">On Hold</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -50,10 +63,17 @@ else
         </div>
     }
 
-    @if (todos.Count == 0)
+    @if (FilteredTodos.Count == 0)
     {
         <div class="alert alert-info">
-            No todos found. Create your first todo to get started!
+            @if (string.IsNullOrEmpty(selectedStatusFilter))
+            {
+                <text>No todos found. Create your first todo to get started!</text>
+            }
+            else
+            {
+                <text>No todos found with status "@selectedStatusFilter". Try a different filter.</text>
+            }
         </div>
     }
     else
@@ -61,7 +81,12 @@ else
         <div class="row">
             <div class="col-md-12">
                 <div class="mb-3">
-                    <span class="badge bg-primary">Total: @todos.Count</span>
+                    <span class="badge bg-primary">Showing: @FilteredTodos.Count</span>
+                    @if (!string.IsNullOrEmpty(selectedStatusFilter))
+                    {
+                        <span class="badge bg-info ms-2">Filtered by: @selectedStatusFilter</span>
+                    }
+                    <span class="badge bg-secondary ms-2">Total: @todos.Count</span>
                     <span class="badge bg-success ms-2">Completed: @todos.Count(t => t.IsCompleted)</span>
                     <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == 1 /*"InProgress"*/)</span>
                     <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == 0 /*"NotStarted"*/)</span>
@@ -82,7 +107,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var todo in todos.OrderByDescending(t => t.CreatedAt))
+                    @foreach (var todo in FilteredTodos.OrderByDescending(t => t.CreatedAt))
                     {
                        
                         <tr class="@(todo.IsCompleted ? "table-success" : "")">
@@ -136,10 +161,29 @@ else
     private string newTodoTitle = string.Empty;
     private string newTodoDescription = string.Empty;
     private string createError = string.Empty;
+    private string selectedStatusFilter = string.Empty;
+
+    private List<TodoItemDto> FilteredTodos
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(selectedStatusFilter))
+            {
+                return todos;
+            }
+            return todos.Where(t => t.Status == selectedStatusFilter).ToList();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         await LoadTodos();
+    }
+
+    private void OnFilterChanged()
+    {
+        // This method is called after the filter changes
+        // The UI will automatically refresh due to the FilteredTodos property
     }
 
     private async Task LoadTodos()
