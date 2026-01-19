@@ -1,5 +1,4 @@
 @inherits LayoutComponentBase
-@inject IJSRuntime JSRuntime
 
 <div class="page">
     <div class="sidebar">
@@ -8,16 +7,7 @@
 
     <main>
         <div class="top-row px-4">
-            <button class="btn btn-sm theme-toggle" @onclick="ToggleTheme" title="Toggle dark mode">
-                @if (currentTheme == "dark")
-                {
-                    <span>☀️ Light</span>
-                }
-                else
-                {
-                    <span>🌙 Dark</span>
-                }
-            </button>
+            <ThemeToggle />
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
         </div>
 
@@ -32,38 +22,3 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
-
-@code {
-    private string currentTheme = "light";
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // Load theme from localStorage
-            var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
-            if (!string.IsNullOrEmpty(savedTheme))
-            {
-                currentTheme = savedTheme;
-                await ApplyTheme();
-                StateHasChanged();
-            }
-            else
-            {
-                await ApplyTheme();
-            }
-        }
-    }
-
-    private async Task ToggleTheme()
-    {
-        currentTheme = currentTheme == "light" ? "dark" : "light";
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", currentTheme);
-        await ApplyTheme();
-    }
-
-    private async Task ApplyTheme()
-    {
-        await JSRuntime.InvokeVoidAsync("eval", $"document.documentElement.setAttribute('data-theme', '{currentTheme}')");
-    }
-}
