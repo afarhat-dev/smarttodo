@@ -94,62 +94,64 @@ else
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Title</th>
-                        <th>Description</th>
-                        <th>Created</th>
-                        <th>Updated</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var todo in FilteredTodos.OrderByDescending(t => t.CreatedAt))
-                    {
-
-                        <tr class="@(todo.IsCompleted ? "table-success" : "")">
-                            <td>
-                                <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
-                                    @(todo.Status == 0 ? "Pending" : todo.Status == 1 ? "Started" : "Completed")
-                                </span>
-                            </td>
-                            <td>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var todo in FilteredTodos.OrderByDescending(t => t.CreatedAt))
+            {
+                <div class="col">
+                    <div class="card h-100 @(todo.IsCompleted ? "border-success" : "")">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
+                                @(todo.Status == 0 ? "Pending" : todo.Status == 1 ? "Started" : "Completed")
+                            </span>
+                            <small class="text-muted">@todo.CreatedAt.ToString("g")</small>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">
                                 @if (todo.IsCompleted)
                                 {
                                     <del>@todo.Title</del>
                                 }
                                 else
                                 {
-                                    <strong>@todo.Title</strong>
+                                    @todo.Title
                                 }
-                            </td>
-                            <td>@(string.IsNullOrEmpty(todo.Description) ? "-" : todo.Description)</td>
-                            <td>@todo.CreatedAt.ToString("g")</td>
-                            <td>@todo.UpdatedAt.ToString("g")</td>
-                            <td>
+                            </h5>
+                            @if (!string.IsNullOrEmpty(todo.Description))
+                            {
+                                <p class="card-text">@todo.Description</p>
+                            }
+                            else
+                            {
+                                <p class="card-text text-muted fst-italic">No description</p>
+                            }
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <strong>Updated:</strong> @todo.UpdatedAt.ToString("g")
+                                </small>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex gap-2">
                                 @if (!todo.IsCompleted)
                                 {
-                                    <button class="btn btn-sm btn-success" @onclick="() => ToggleComplete(todo)">
-                                        ✓ Complete
+                                    <button class="btn btn-sm btn-success flex-fill" @onclick="() => ToggleComplete(todo)">
+                                        <span>✓</span> Complete
                                     </button>
                                 }
                                 else
                                 {
-                                    <button class="btn btn-sm btn-warning" @onclick="() => ToggleComplete(todo)">
-                                        ↶ Reopen
+                                    <button class="btn btn-sm btn-warning flex-fill" @onclick="() => ToggleComplete(todo)">
+                                        <span>↶</span> Reopen
                                     </button>
                                 }
-                                <button class="btn btn-sm btn-danger ms-1" @onclick="() => DeleteTodo(todo.Id)">
-                                    🗑 Delete
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteTodo(todo.Id)">
+                                    <span>🗑</span>
                                 </button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     }
 }
