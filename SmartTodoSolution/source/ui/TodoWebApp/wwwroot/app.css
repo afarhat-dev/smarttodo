@@ -150,20 +150,20 @@ main {
 }
 
 /* Dark Theme Styles */
-htmlhtml[data-theme="dark"] {
+html[data-theme="dark"] {
     color-scheme: dark;
 }
 
-htmlhtml[data-theme="dark"] body {
+html[data-theme="dark"] body {
     background-color: #1a1a1a;
     color: #e0e0e0;
 }
 
-htmlhtml[data-theme="dark"] .page {
+html[data-theme="dark"] .page {
     background-color: #1a1a1a;
 }
 
-htmlhtml[data-theme="dark"] main {
+html[data-theme="dark"] main {
     background-color: #1a1a1a;
 }
 
