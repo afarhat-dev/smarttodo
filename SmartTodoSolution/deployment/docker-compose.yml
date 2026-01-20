@@ -6,6 +6,7 @@ services:
     container_name: smarttodo-seq
     environment:
       - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=SeqAdmin123!
     ports:
       - "5341:80"
       - "5342:5341"
@@ -42,6 +43,7 @@ services:
       - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=smarttodo;Username=admin;Password=P@ssw0rd
       - Serilog__WriteTo__1__Name=Seq
       - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - Serilog__WriteTo__1__Args__apiKey=SmartTodoApiKey123
     ports:
       - "5208:8080"
     depends_on:
@@ -61,6 +63,7 @@ services:
       - ApiSettings__BaseUrl=http://api:8080
       - Serilog__WriteTo__1__Name=Seq
       - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
+      - Serilog__WriteTo__1__Args__apiKey=SmartTodoApiKey123
     ports:
       - "5209:8080"
     depends_on:
