@@ -53,6 +53,15 @@ else
                     <label for="newDescription" class="form-label">Description (Optional)</label>
                     <textarea class="form-control" id="newDescription" @bind="newTodoDescription" rows="3" placeholder="Enter description"></textarea>
                 </div>
+                <div class="mb-3">
+                    <label for="newPriority" class="form-label">Priority</label>
+                    <select class="form-select" id="newPriority" @bind="newTodoPriority">
+                        <option value="0">🟢 Low</option>
+                        <option value="1" selected>🟡 Medium</option>
+                        <option value="2">🟠 High</option>
+                        <option value="3">🔴 Critical</option>
+                    </select>
+                </div>
                 <button class="btn btn-success" @onclick="CreateTodo">Create</button>
                 <button class="btn btn-secondary ms-2" @onclick="HideCreateDialog">Cancel</button>
                 @if (!string.IsNullOrEmpty(createError))
@@ -100,9 +109,14 @@ else
                 <div class="col">
                     <div class="card h-100 @(todo.IsCompleted ? "border-success" : "")">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
-                                @(todo.Status == 0 ? "Pending" : todo.Status == 1 ? "Started" : "Completed")
-                            </span>
+                            <div>
+                                <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
+                                    @(todo.Status == 0 ? "Pending" : todo.Status == 1 ? "Started" : "Completed")
+                                </span>
+                                <span class="badge @GetPriorityBadgeClass(todo.Priority) ms-1" @onclick="() => CyclePriority(todo)" style="cursor: pointer;" title="Click to change priority">
+                                    @GetPriorityDisplayName(todo.Priority)
+                                </span>
+                            </div>
                             <small class="text-muted">@todo.CreatedAt.ToString("g")</small>
                         </div>
                         <div class="card-body">
@@ -162,6 +176,7 @@ else
     private bool showCreateDialog = false;
     private string newTodoTitle = string.Empty;
     private string newTodoDescription = string.Empty;
+    private int newTodoPriority = 1; // Default to Medium
     private string createError = string.Empty;
     private int? selectedStatusFilter = null;
 
@@ -213,6 +228,7 @@ else
         showCreateDialog = true;
         newTodoTitle = string.Empty;
         newTodoDescription = string.Empty;
+        newTodoPriority = 1; // Reset to Medium
         createError = string.Empty;
     }
 
@@ -232,7 +248,8 @@ else
         var request = new CreateTodoRequest
         {
             Title = newTodoTitle.Trim(),
-            Description = string.IsNullOrWhiteSpace(newTodoDescription) ? null : newTodoDescription.Trim()
+            Description = string.IsNullOrWhiteSpace(newTodoDescription) ? null : newTodoDescription.Trim(),
+            Priority = newTodoPriority
         };
 
         var result = await TodoApi.CreateTodoAsync(request);
@@ -286,5 +303,37 @@ else
             "Cancelled" => "bg-dark",
             _ => "bg-secondary"
         };
+    }
+
+    private string GetPriorityDisplayName(int priority)
+    {
+        return priority switch
+        {
+            0 => "🟢 Low",
+            1 => "🟡 Medium",
+            2 => "🟠 High",
+            3 => "🔴 Critical",
+            _ => "🟡 Medium"
+        };
+    }
+
+    private string GetPriorityBadgeClass(int priority)
+    {
+        return priority switch
+        {
+            0 => "bg-success",      // Low - Green
+            1 => "bg-warning",      // Medium - Yellow
+            2 => "bg-danger",       // High - Orange/Red
+            3 => "bg-dark bg-gradient", // Critical - Dark with gradient
+            _ => "bg-warning"
+        };
+    }
+
+    private async Task CyclePriority(TodoItemDto todo)
+    {
+        // Cycle through priorities: Low -> Medium -> High -> Critical -> Low
+        todo.Priority = (todo.Priority + 1) % 4;
+        await TodoApi.UpdateTodoAsync(todo.Id, todo);
+        await LoadTodos();
     }
 }

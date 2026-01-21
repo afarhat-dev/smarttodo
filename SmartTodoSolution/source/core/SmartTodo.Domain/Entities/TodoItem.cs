@@ -17,6 +17,7 @@ public class TodoItem
     public DateTime? StartDate { get; private set; }
     public DateTime? CompletedAt { get; private set; }
     public TodoStatus Status { get; private set; }
+    public TodoPriority Priority { get; private set; }
 
     private TodoItem()
     {
@@ -46,6 +47,7 @@ public class TodoItem
         Description = description;
         IsCompleted = false;
         Status = TodoStatus.NotStarted;
+        Priority = TodoPriority.Medium;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -152,5 +154,11 @@ public class TodoItem
             Status = TodoStatus.Cancelled;
             UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    public void UpdatePriority(TodoPriority priority)
+    {
+        Priority = priority;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

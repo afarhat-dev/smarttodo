@@ -40,6 +40,10 @@ namespace SmartTodo.Infrastructure.Migrations
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -62,6 +66,9 @@ namespace SmartTodo.Infrastructure.Migrations
 
                     b.HasIndex("IsCompleted")
                         .HasDatabaseName("IX_TodoItems_IsCompleted");
+
+                    b.HasIndex("Priority")
+                        .HasDatabaseName("IX_TodoItems_Priority");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_TodoItems_Status");

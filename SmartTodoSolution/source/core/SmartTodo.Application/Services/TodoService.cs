@@ -34,6 +34,10 @@ public class TodoService : ITodoService
     public async Task<TodoItemDto> CreateAsync(CreateTodoItemDto createDto)
     {
         var todoItem = new TodoItem(createDto.Title, createDto.Description);
+
+        if (createDto.Priority.HasValue)
+            todoItem.UpdatePriority(createDto.Priority.Value);
+
         var createdItem = await _repository.AddAsync(todoItem);
         return MapToDto(createdItem);
     }
@@ -80,6 +84,11 @@ public class TodoService : ITodoService
                 todoItem.MarkAsIncomplete();
         }
 
+        if (updateDto.Priority.HasValue)
+        {
+            todoItem.UpdatePriority(updateDto.Priority.Value);
+        }
+
         var updatedItem = await _repository.UpdateAsync(todoItem);
         return updatedItem != null ? MapToDto(updatedItem) : null;
     }
@@ -97,6 +106,7 @@ public class TodoService : ITodoService
             todoItem.Description,
             todoItem.IsCompleted,
             todoItem.Status,
+            todoItem.Priority,
             todoItem.CreatedAt,
             todoItem.UpdatedAt,
             todoItem.StartDate,

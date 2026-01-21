@@ -31,6 +31,10 @@ public class TodoItemConfiguration : IEntityTypeConfiguration<TodoItem>
             .IsRequired()
             .HasConversion<string>(); // Store enum as string
 
+        builder.Property(t => t.Priority)
+            .IsRequired()
+            .HasConversion<string>(); // Store enum as string
+
         builder.Property(t => t.CreatedAt)
             .IsRequired();
 
@@ -44,6 +48,9 @@ public class TodoItemConfiguration : IEntityTypeConfiguration<TodoItem>
         // Indexes for performance
         builder.HasIndex(t => t.Status)
             .HasDatabaseName("IX_TodoItems_Status");
+
+        builder.HasIndex(t => t.Priority)
+            .HasDatabaseName("IX_TodoItems_Priority");
 
         builder.HasIndex(t => t.IsCompleted)
             .HasDatabaseName("IX_TodoItems_IsCompleted");

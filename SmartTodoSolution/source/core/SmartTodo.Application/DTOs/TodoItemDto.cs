@@ -8,6 +8,7 @@ public record TodoItemDto(
     string? Description,
     bool IsCompleted,
     TodoStatus Status,
+    TodoPriority Priority,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime? StartDate,
@@ -16,12 +17,14 @@ public record TodoItemDto(
 
 public record CreateTodoItemDto(
     string Title,
-    string? Description
+    string? Description,
+    TodoPriority? Priority = null
 );
 
 public record UpdateTodoItemDto(
     string? Title,
     string? Description,
     bool? IsCompleted,
-    TodoStatus? Status
+    TodoStatus? Status,
+    TodoPriority? Priority
 );
