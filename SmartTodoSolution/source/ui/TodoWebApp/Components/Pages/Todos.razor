@@ -1,0 +1,290 @@
+@page "/todos"
+@using TodoWebApp.Services
+@using TodoWebApp.Models
+@inject ITodoApiService TodoApi
+@rendermode InteractiveServer
+
+<PageTitle>Todos</PageTitle>
+
+<h1>Todo List</h1>
+
+@if (isLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+}
+else
+{
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <button class="btn btn-primary" @onclick="ShowCreateDialog">
+                <span>➕</span> Add New Todo
+            </button>
+            <button class="btn btn-secondary ms-2" @onclick="LoadTodos">
+                <span>🔄</span> Refresh
+            </button>
+        </div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <label class="input-group-text">Filter by Status:</label>
+                <select class="form-select" @bind="selectedStatusFilter" @bind:after="OnFilterChanged">
+                    <option value="">All</option>
+                    <option value="0">Not Started</option>
+                    <option value="1">In Progress</option>
+                    <option value="2">Completed</option>
+                    <option value="3">On Hold</option>
+                    <option value="4">Cancelled</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (showCreateDialog)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Create New Todo</h5>
+                <div class="mb-3">
+                    <label for="newTitle" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="newTitle" @bind="newTodoTitle" placeholder="Enter todo title" />
+                </div>
+                <div class="mb-3">
+                    <label for="newDescription" class="form-label">Description (Optional)</label>
+                    <textarea class="form-control" id="newDescription" @bind="newTodoDescription" rows="3" placeholder="Enter description"></textarea>
+                </div>
+                <button class="btn btn-success" @onclick="CreateTodo">Create</button>
+                <button class="btn btn-secondary ms-2" @onclick="HideCreateDialog">Cancel</button>
+                @if (!string.IsNullOrEmpty(createError))
+                {
+                    <div class="alert alert-danger mt-2">@createError</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (FilteredTodos.Count == 0)
+    {
+        <div class="alert alert-info">
+            @if (!selectedStatusFilter.HasValue)
+            {
+                <text>No todos found. Create your first todo to get started!</text>
+            }
+            else
+            {
+                <text>No todos found with status "@GetStatusDisplayName(selectedStatusFilter.Value)". Try a different filter.</text>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <span class="badge bg-primary">Showing: @FilteredTodos.Count</span>
+                    @if (selectedStatusFilter.HasValue)
+                    {
+                        <span class="badge bg-info ms-2">Filtered by: @GetStatusDisplayName(selectedStatusFilter.Value)</span>
+                    }
+                    <span class="badge bg-secondary ms-2">Total: @todos.Count</span>
+                    <span class="badge bg-success ms-2">Completed: @todos.Count(t => t.IsCompleted)</span>
+                    <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == 1)</span>
+                    <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == 0)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var todo in FilteredTodos.OrderByDescending(t => t.CreatedAt))
+            {
+                <div class="col">
+                    <div class="card h-100 @(todo.IsCompleted ? "border-success" : "")">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
+                                @(todo.Status == 0 ? "Pending" : todo.Status == 1 ? "Started" : "Completed")
+                            </span>
+                            <small class="text-muted">@todo.CreatedAt.ToString("g")</small>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                @if (todo.IsCompleted)
+                                {
+                                    <del>@todo.Title</del>
+                                }
+                                else
+                                {
+                                    @todo.Title
+                                }
+                            </h5>
+                            @if (!string.IsNullOrEmpty(todo.Description))
+                            {
+                                <p class="card-text">@todo.Description</p>
+                            }
+                            else
+                            {
+                                <p class="card-text text-muted fst-italic">No description</p>
+                            }
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <strong>Updated:</strong> @todo.UpdatedAt.ToString("g")
+                                </small>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex gap-2">
+                                @if (!todo.IsCompleted)
+                                {
+                                    <button class="btn btn-sm btn-success flex-fill" @onclick="() => ToggleComplete(todo)">
+                                        <span>✓</span> Complete
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-warning flex-fill" @onclick="() => ToggleComplete(todo)">
+                                        <span>↶</span> Reopen
+                                    </button>
+                                }
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteTodo(todo.Id)">
+                                    <span>🗑</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<TodoItemDto> todos = new();
+    private bool isLoading = true;
+    private bool showCreateDialog = false;
+    private string newTodoTitle = string.Empty;
+    private string newTodoDescription = string.Empty;
+    private string createError = string.Empty;
+    private int? selectedStatusFilter = null;
+
+    private List<TodoItemDto> FilteredTodos
+    {
+        get
+        {
+            if (!selectedStatusFilter.HasValue)
+            {
+                return todos;
+            }
+            return todos.Where(t => t.Status == selectedStatusFilter.Value).ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTodos();
+    }
+
+    private void OnFilterChanged()
+    {
+        // This method is called after the filter changes
+        // The UI will automatically refresh due to the FilteredTodos property
+    }
+
+    private string GetStatusDisplayName(int status)
+    {
+        return status switch
+        {
+            0 => "Not Started",
+            1 => "In Progress",
+            2 => "Completed",
+            3 => "On Hold",
+            4 => "Cancelled",
+            _ => "Unknown"
+        };
+    }
+
+    private async Task LoadTodos()
+    {
+        isLoading = true;
+        todos = await TodoApi.GetAllTodosAsync();
+        isLoading = false;
+    }
+
+    private void ShowCreateDialog()
+    {
+        showCreateDialog = true;
+        newTodoTitle = string.Empty;
+        newTodoDescription = string.Empty;
+        createError = string.Empty;
+    }
+
+    private void HideCreateDialog()
+    {
+        showCreateDialog = false;
+    }
+
+    private async Task CreateTodo()
+    {
+        if (string.IsNullOrWhiteSpace(newTodoTitle))
+        {
+            createError = "Title is required";
+            return;
+        }
+
+        var request = new CreateTodoRequest
+        {
+            Title = newTodoTitle.Trim(),
+            Description = string.IsNullOrWhiteSpace(newTodoDescription) ? null : newTodoDescription.Trim()
+        };
+
+        var result = await TodoApi.CreateTodoAsync(request);
+        if (result != null)
+        {
+            await LoadTodos();
+            HideCreateDialog();
+        }
+        else
+        {
+            createError = "Failed to create todo. Please try again.";
+        }
+    }
+
+    private async Task ToggleComplete(TodoItemDto todo)
+    {
+        todo.IsCompleted = !todo.IsCompleted;
+        todo.UpdatedAt = DateTime.UtcNow;
+
+        if (todo.IsCompleted)
+        {
+            todo.CompletedAt = DateTime.UtcNow;
+            todo.Status = 2;//"Completed";
+        }
+        else
+        {
+            todo.CompletedAt = null;
+            todo.Status = 0;//"NotStarted";
+        }
+
+        await TodoApi.UpdateTodoAsync(todo.Id, todo);
+        await LoadTodos();
+    }
+
+    private async Task DeleteTodo(Guid id)
+    {
+        if (await TodoApi.DeleteTodoAsync(id))
+        {
+            await LoadTodos();
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "NotStarted" => "bg-secondary",
+            "InProgress" => "bg-warning",
+            "Completed" => "bg-success",
+            "OnHold" => "bg-info",
+            "Cancelled" => "bg-dark",
+            _ => "bg-secondary"
+        };
+    }
+}

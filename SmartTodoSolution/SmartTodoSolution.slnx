@@ -12,6 +12,7 @@
   </Folder>
   <Folder Name="/source/ui/">
     <Project Path="source/ui/StdApi/StdApi.csproj" Id="8a753d27-515c-40ff-bc0b-bf46604d5dbe" />
+    <Project Path="source/ui/TodoWebApp/TodoWebApp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SmartTodo.Application.Tests/SmartTodo.Application.Tests.csproj" />
