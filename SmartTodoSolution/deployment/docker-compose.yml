@@ -1,5 +1,5 @@
 version: '3.8'
-
+name: smarttodo
 services:
   seq:
     image: datalust/seq:latest
@@ -16,7 +16,7 @@ services:
 
   postgres:
     image: postgres:16
-    container_name: dev-postgres
+    container_name: uat-postgres
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: P@ssw0rd
