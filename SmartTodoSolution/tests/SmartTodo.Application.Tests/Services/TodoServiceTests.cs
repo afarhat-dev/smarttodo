@@ -167,7 +167,8 @@ public class TodoServiceTests
             "Updated Title",
             "Updated Description",           
             false,
-            TodoStatus.NotStarted
+            TodoStatus.NotStarted,
+            TodoPriority.Low
         );
 
         _mockRepository.Setup(r => r.GetByIdAsync(id))
@@ -191,7 +192,7 @@ public class TodoServiceTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var updateDto = new UpdateTodoItemDto("Updated Title",null,null,null);// ( Title = );
+        var updateDto = new UpdateTodoItemDto("Updated Title",null,null,null,null);// ( Title = );
         _mockRepository.Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync((TodoItem?)null);
 
@@ -210,7 +211,7 @@ public class TodoServiceTests
         // Arrange
         var id = Guid.NewGuid();
         var todoItem = new TodoItem("Test Todo");
-        var updateDto = new UpdateTodoItemDto(null, null, null, TodoStatus.InProgress);
+        var updateDto = new UpdateTodoItemDto(null, null, null, TodoStatus.InProgress,null);
 
         _mockRepository.Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync(todoItem);
@@ -232,7 +233,7 @@ public class TodoServiceTests
         // Arrange
         var id = Guid.NewGuid();
         var todoItem = new TodoItem("Test Todo");
-        var updateDto = new UpdateTodoItemDto(null, null, true, null);
+        var updateDto = new UpdateTodoItemDto(null, null, true, null,null);
 
         _mockRepository.Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync(todoItem);
