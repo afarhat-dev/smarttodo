@@ -28,6 +28,7 @@ public class TodoToolHandler
             "pause_todo" => await PauseTodoAsync(parameters),
             "resume_todo" => await ResumeTodoAsync(parameters),
             "cancel_todo" => await CancelTodoAsync(parameters),
+            "set_todo_priority" => await SetTodoPriorityAsync(parameters),
             _ => throw new InvalidOperationException($"Unknown tool: {toolName}")
         };
     }
@@ -234,6 +235,43 @@ public class TodoToolHandler
     private async Task<object> CancelTodoAsync(JsonElement? parameters)
     {
         return await UpdateTodoStatusAsync(parameters, TodoStatus.Cancelled, "cancelled");
+    }
+
+    private async Task<object> SetTodoPriorityAsync(JsonElement? parameters)
+    {
+        if (!parameters.HasValue)
+            throw new ArgumentException("Parameters are required for set_todo_priority");
+
+        var idString = parameters.Value.GetProperty("id").GetString()
+            ?? throw new ArgumentException("ID is required");
+
+        if (!Guid.TryParse(idString, out var id))
+            throw new ArgumentException("Invalid ID format");
+
+        var priorityString = parameters.Value.GetProperty("priority").GetString()
+            ?? throw new ArgumentException("Priority is required");
+
+        if (!Enum.TryParse<TodoPriority>(priorityString, true, out var priority))
+            throw new ArgumentException($"Invalid priority value. Valid values are: Low, Medium, High, Critical");
+
+        var updateDto = new UpdateTodoItemDto(null, null, null, null, priority);
+        var result = await _todoService.UpdateAsync(id, updateDto);
+
+        if (result == null)
+        {
+            return new
+            {
+                success = false,
+                message = $"Todo with ID {id} not found"
+            };
+        }
+
+        return new
+        {
+            success = true,
+            todo = result,
+            message = $"Todo '{result.Title}' priority set to {priority} successfully"
+        };
     }
 
     private async Task<object> UpdateTodoStatusAsync(JsonElement? parameters, TodoStatus status, string action)

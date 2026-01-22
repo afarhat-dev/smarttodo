@@ -17,7 +17,8 @@ public static class ToolDefinitions
             CompleteTodoTool(),
             PauseTodoTool(),
             ResumeTodoTool(),
-            CancelTodoTool()
+            CancelTodoTool(),
+            SetTodoPriorityTool()
         };
     }
 
@@ -26,7 +27,7 @@ public static class ToolDefinitions
         return new McpTool
         {
             Name = "create_todo",
-            Description = "Create a new todo item",
+            Description = "Create a new todo item with optional priority",
             InputSchema = new ToolInputSchema
             {
                 Properties = new Dictionary<string, ToolProperty>
@@ -40,6 +41,12 @@ public static class ToolDefinitions
                     {
                         Type = "string",
                         Description = "Optional description of the todo item"
+                    },
+                    ["priority"] = new ToolProperty
+                    {
+                        Type = "string",
+                        Description = "Priority level for the todo (defaults to Medium if not specified)",
+                        Enum = new List<string> { "Low", "Medium", "High", "Critical" }
                     }
                 },
                 Required = new List<string> { "title" }
@@ -74,7 +81,7 @@ public static class ToolDefinitions
         return new McpTool
         {
             Name = "list_todos",
-            Description = "Get all todos with optional filtering by status, completion state, and date ranges",
+            Description = "Get all todos with optional filtering by status, priority, completion state, and date ranges",
             InputSchema = new ToolInputSchema
             {
                 Properties = new Dictionary<string, ToolProperty>
@@ -84,6 +91,12 @@ public static class ToolDefinitions
                         Type = "string",
                         Description = "Filter by status",
                         Enum = new List<string> { "NotStarted", "InProgress", "OnHold", "Completed", "Cancelled" }
+                    },
+                    ["priority"] = new ToolProperty
+                    {
+                        Type = "string",
+                        Description = "Filter by priority level",
+                        Enum = new List<string> { "Low", "Medium", "High", "Critical" }
                     },
                     ["isCompleted"] = new ToolProperty
                     {
@@ -124,7 +137,7 @@ public static class ToolDefinitions
         return new McpTool
         {
             Name = "update_todo",
-            Description = "Update an existing todo item",
+            Description = "Update an existing todo item (title, description, status, priority, or completion state)",
             InputSchema = new ToolInputSchema
             {
                 Properties = new Dictionary<string, ToolProperty>
@@ -150,6 +163,12 @@ public static class ToolDefinitions
                         Type = "string",
                         Description = "New status for the todo item",
                         Enum = new List<string> { "NotStarted", "InProgress", "OnHold", "Completed", "Cancelled" }
+                    },
+                    ["priority"] = new ToolProperty
+                    {
+                        Type = "string",
+                        Description = "New priority level for the todo item",
+                        Enum = new List<string> { "Low", "Medium", "High", "Critical" }
                     },
                     ["isCompleted"] = new ToolProperty
                     {
@@ -290,6 +309,34 @@ public static class ToolDefinitions
                     }
                 },
                 Required = new List<string> { "id" }
+            }
+        };
+    }
+
+    private static McpTool SetTodoPriorityTool()
+    {
+        return new McpTool
+        {
+            Name = "set_todo_priority",
+            Description = "Set the priority level of a todo item (Low, Medium, High, or Critical)",
+            InputSchema = new ToolInputSchema
+            {
+                Properties = new Dictionary<string, ToolProperty>
+                {
+                    ["id"] = new ToolProperty
+                    {
+                        Type = "string",
+                        Description = "The ID of the todo item",
+                        Format = "uuid"
+                    },
+                    ["priority"] = new ToolProperty
+                    {
+                        Type = "string",
+                        Description = "The priority level to set",
+                        Enum = new List<string> { "Low", "Medium", "High", "Critical" }
+                    }
+                },
+                Required = new List<string> { "id", "priority" }
             }
         };
     }
