@@ -28,6 +28,7 @@ public class TodoToolHandler
             "pause_todo" => await PauseTodoAsync(parameters),
             "resume_todo" => await ResumeTodoAsync(parameters),
             "cancel_todo" => await CancelTodoAsync(parameters),
+            "set_todo_priority" => await SetTodoPriorityAsync(parameters),
             _ => throw new InvalidOperationException($"Unknown tool: {toolName}")
         };
     }
@@ -44,7 +45,17 @@ public class TodoToolHandler
             ? descProp.GetString()
             : null;
 
-        var createDto = new CreateTodoItemDto(title, description);
+        TodoPriority? priority = null;
+        if (parameters.Value.TryGetProperty("priority", out var priorityProp) && priorityProp.ValueKind == JsonValueKind.String)
+        {
+            var priorityString = priorityProp.GetString();
+            if (Enum.TryParse<TodoPriority>(priorityString, out var parsedPriority))
+            {
+                priority = parsedPriority;
+            }
+        }
+
+        var createDto = new CreateTodoItemDto(title, description, priority);
         var result = await _todoService.CreateAsync(createDto);
 
         return new
@@ -142,7 +153,17 @@ public class TodoToolHandler
             }
         }
 
-        var updateDto = new UpdateTodoItemDto(title, description, isCompleted, status);
+        TodoPriority? priority = null;
+        if (parameters.Value.TryGetProperty("priority", out var priorityProp) && priorityProp.ValueKind == JsonValueKind.String)
+        {
+            var priorityString = priorityProp.GetString();
+            if (Enum.TryParse<TodoPriority>(priorityString, out var parsedPriority))
+            {
+                priority = parsedPriority;
+            }
+        }
+
+        var updateDto = new UpdateTodoItemDto(title, description, isCompleted, status, priority);
         var result = await _todoService.UpdateAsync(id, updateDto);
 
         if (result == null)
@@ -216,6 +237,43 @@ public class TodoToolHandler
         return await UpdateTodoStatusAsync(parameters, TodoStatus.Cancelled, "cancelled");
     }
 
+    private async Task<object> SetTodoPriorityAsync(JsonElement? parameters)
+    {
+        if (!parameters.HasValue)
+            throw new ArgumentException("Parameters are required for set_todo_priority");
+
+        var idString = parameters.Value.GetProperty("id").GetString()
+            ?? throw new ArgumentException("ID is required");
+
+        if (!Guid.TryParse(idString, out var id))
+            throw new ArgumentException("Invalid ID format");
+
+        var priorityString = parameters.Value.GetProperty("priority").GetString()
+            ?? throw new ArgumentException("Priority is required");
+
+        if (!Enum.TryParse<TodoPriority>(priorityString, true, out var priority))
+            throw new ArgumentException($"Invalid priority value. Valid values are: Low, Medium, High, Critical");
+
+        var updateDto = new UpdateTodoItemDto(null, null, null, null, priority);
+        var result = await _todoService.UpdateAsync(id, updateDto);
+
+        if (result == null)
+        {
+            return new
+            {
+                success = false,
+                message = $"Todo with ID {id} not found"
+            };
+        }
+
+        return new
+        {
+            success = true,
+            todo = result,
+            message = $"Todo '{result.Title}' priority set to {priority} successfully"
+        };
+    }
+
     private async Task<object> UpdateTodoStatusAsync(JsonElement? parameters, TodoStatus status, string action)
     {
         if (!parameters.HasValue)
@@ -227,7 +285,7 @@ public class TodoToolHandler
         if (!Guid.TryParse(idString, out var id))
             throw new ArgumentException("Invalid ID format");
 
-        var updateDto = new UpdateTodoItemDto(null, null, null, status);
+        var updateDto = new UpdateTodoItemDto(null, null, null, status, null);
         var result = await _todoService.UpdateAsync(id, updateDto);
 
         if (result == null)
@@ -259,6 +317,16 @@ public class TodoToolHandler
             }
         }
 
+        TodoPriority? priority = null;
+        if (parameters.TryGetProperty("priority", out var priorityProp) && priorityProp.ValueKind == JsonValueKind.String)
+        {
+            var priorityString = priorityProp.GetString();
+            if (Enum.TryParse<TodoPriority>(priorityString, out var parsedPriority))
+            {
+                priority = parsedPriority;
+            }
+        }
+
         var isCompleted = parameters.TryGetProperty("isCompleted", out var completedProp)
             ? completedProp.GetBoolean()
             : (bool?)null;
@@ -274,6 +342,7 @@ public class TodoToolHandler
 
         return new TodoFilter(
             status,
+            priority,
             createdFrom,
             createdTo,
             updatedFrom,

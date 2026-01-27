@@ -55,6 +55,7 @@ public class TodoToolHandlerTests
             "Test Description",
             false,
             TodoStatus.NotStarted,
+            TodoPriority.Medium,
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
@@ -94,6 +95,7 @@ public class TodoToolHandlerTests
             null,
             false,
             TodoStatus.NotStarted,
+            TodoPriority.Medium,
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
@@ -143,6 +145,7 @@ public class TodoToolHandlerTests
             "Test Description",
             false,
             TodoStatus.NotStarted,
+            TodoPriority.Medium,
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
@@ -208,9 +211,9 @@ public class TodoToolHandlerTests
         var todos = new List<TodoItemDto>
         {
             new TodoItemDto(Guid.NewGuid(), "Todo 1", null, false, TodoStatus.NotStarted,
-                DateTime.UtcNow, DateTime.UtcNow, null, null),
+                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, null, null),
             new TodoItemDto(Guid.NewGuid(), "Todo 2", null, false, TodoStatus.NotStarted,
-                DateTime.UtcNow, DateTime.UtcNow, null, null)
+                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, null, null)
         };
 
         _mockTodoService.Setup(s => s.GetAllAsync())
@@ -236,7 +239,7 @@ public class TodoToolHandlerTests
         var todos = new List<TodoItemDto>
         {
             new TodoItemDto(Guid.NewGuid(), "Todo 1", null, false, TodoStatus.InProgress,
-                DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow, null)
+                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow, null)
         };
 
         _mockTodoService.Setup(s => s.GetFilteredAsync(It.IsAny<TodoFilter>()))
@@ -270,6 +273,7 @@ public class TodoToolHandlerTests
             null,
             false,
             TodoStatus.NotStarted,
+            TodoPriority.Medium,
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
@@ -337,6 +341,7 @@ public class TodoToolHandlerTests
             null,
             false,
             TodoStatus.InProgress,
+            TodoPriority.Medium,
             DateTime.UtcNow,
             DateTime.UtcNow,
             DateTime.UtcNow,

@@ -22,6 +22,7 @@ public class TodoController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<TodoItemDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<TodoItemDto>>> GetAll(
         [FromQuery] TodoStatus? status = null,
+        [FromQuery] TodoPriority? priority = null,
         [FromQuery] bool? isCompleted = null,
         [FromQuery] DateTime? createdFrom = null,
         [FromQuery] DateTime? createdTo = null,
@@ -32,12 +33,13 @@ public class TodoController : ControllerBase
         [FromQuery] DateTime? completedFrom = null,
         [FromQuery] DateTime? completedTo = null)
     {
-        if (status.HasValue || isCompleted.HasValue || createdFrom.HasValue || createdTo.HasValue ||
+        if (status.HasValue || priority.HasValue || isCompleted.HasValue || createdFrom.HasValue || createdTo.HasValue ||
             updatedFrom.HasValue || updatedTo.HasValue || startDateFrom.HasValue || startDateTo.HasValue ||
             completedFrom.HasValue || completedTo.HasValue)
         {
             var filter = new TodoFilter(
                 status,
+                priority,
                 createdFrom,
                 createdTo,
                 updatedFrom,

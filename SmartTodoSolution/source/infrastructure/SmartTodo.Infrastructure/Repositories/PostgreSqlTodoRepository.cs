@@ -39,6 +39,11 @@ public class PostgreSqlTodoRepository : ITodoRepository
             query = query.Where(t => t.Status == filter.Status.Value);
         }
 
+        if (filter.Priority.HasValue)
+        {
+            query = query.Where(t => t.Priority == filter.Priority.Value);
+        }
+
         if (filter.IsCompleted.HasValue)
         {
             query = query.Where(t => t.IsCompleted == filter.IsCompleted.Value);
