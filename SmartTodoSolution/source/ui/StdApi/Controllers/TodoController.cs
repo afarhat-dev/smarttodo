@@ -31,11 +31,13 @@ public class TodoController : ControllerBase
         [FromQuery] DateTime? startDateFrom = null,
         [FromQuery] DateTime? startDateTo = null,
         [FromQuery] DateTime? completedFrom = null,
-        [FromQuery] DateTime? completedTo = null)
+        [FromQuery] DateTime? completedTo = null,
+        [FromQuery] string? tag = null,
+        [FromQuery] bool? hasDependencies = null)
     {
         if (status.HasValue || priority.HasValue || isCompleted.HasValue || createdFrom.HasValue || createdTo.HasValue ||
             updatedFrom.HasValue || updatedTo.HasValue || startDateFrom.HasValue || startDateTo.HasValue ||
-            completedFrom.HasValue || completedTo.HasValue)
+            completedFrom.HasValue || completedTo.HasValue || !string.IsNullOrWhiteSpace(tag) || hasDependencies.HasValue)
         {
             var filter = new TodoFilter(
                 status,
@@ -48,7 +50,9 @@ public class TodoController : ControllerBase
                 startDateTo,
                 completedFrom,
                 completedTo,
-                isCompleted
+                isCompleted,
+                tag,
+                hasDependencies
             );
             var filteredTodos = await _todoService.GetFilteredAsync(filter);
             return Ok(filteredTodos);
@@ -130,5 +134,61 @@ public class TodoController : ControllerBase
 
         _logger.LogInformation("Deleted todo item with ID {TodoId}", id);
         return NoContent();
+    }
+
+    [HttpGet("tags")]
+    [ProducesResponseType(typeof(IEnumerable<TagDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<TagDto>>> GetAllTags()
+    {
+        var tags = await _todoService.GetAllTagsAsync();
+        return Ok(tags);
+    }
+
+    [HttpPost("{id}/dependencies/{dependencyId}")]
+    [ProducesResponseType(typeof(TodoItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TodoItemDto>> AddDependency(Guid id, Guid dependencyId)
+    {
+        try
+        {
+            var todo = await _todoService.AddDependencyAsync(id, dependencyId);
+            if (todo == null)
+            {
+                return NotFound();
+            }
+
+            _logger.LogInformation("Added dependency {DependencyId} to todo {TodoId}", dependencyId, id);
+            return Ok(todo);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to add dependency {DependencyId} to todo {TodoId}", dependencyId, id);
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id}/dependencies/{dependencyId}")]
+    [ProducesResponseType(typeof(TodoItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TodoItemDto>> RemoveDependency(Guid id, Guid dependencyId)
+    {
+        try
+        {
+            var todo = await _todoService.RemoveDependencyAsync(id, dependencyId);
+            if (todo == null)
+            {
+                return NotFound();
+            }
+
+            _logger.LogInformation("Removed dependency {DependencyId} from todo {TodoId}", dependencyId, id);
+            return Ok(todo);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to remove dependency {DependencyId} from todo {TodoId}", dependencyId, id);
+            return BadRequest(ex.Message);
+        }
     }
 }

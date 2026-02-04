@@ -94,4 +94,55 @@ public class TodoApiService : ITodoApiService
             return false;
         }
     }
+
+    public async Task<List<TagDto>> GetAllTagsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<TagDto>>(
+                "api/todo/tags", _jsonOptions);
+            return response ?? new List<TagDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching tags from API");
+            return new List<TagDto>();
+        }
+    }
+
+    public async Task<TodoItemDto?> AddDependencyAsync(Guid todoId, Guid dependencyId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/todo/{todoId}/dependencies/{dependencyId}", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<TodoItemDto>(_jsonOptions);
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding dependency {DependencyId} to todo {TodoId}", dependencyId, todoId);
+            return null;
+        }
+    }
+
+    public async Task<TodoItemDto?> RemoveDependencyAsync(Guid todoId, Guid dependencyId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/todo/{todoId}/dependencies/{dependencyId}");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<TodoItemDto>(_jsonOptions);
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing dependency {DependencyId} from todo {TodoId}", dependencyId, todoId);
+            return null;
+        }
+    }
 }

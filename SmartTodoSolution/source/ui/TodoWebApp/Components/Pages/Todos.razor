@@ -62,12 +62,49 @@ else
                         <option value="3">🔴 Critical</option>
                     </select>
                 </div>
+                <div class="mb-3">
+                    <label for="newTags" class="form-label">Tags (comma-separated)</label>
+                    <input type="text" class="form-control" id="newTags" @bind="newTodoTags" placeholder="e.g. frontend, urgent, bug" />
+                </div>
                 <button class="btn btn-success" @onclick="CreateTodo">Create</button>
                 <button class="btn btn-secondary ms-2" @onclick="HideCreateDialog">Cancel</button>
                 @if (!string.IsNullOrEmpty(createError))
                 {
                     <div class="alert alert-danger mt-2">@createError</div>
                 }
+            </div>
+        </div>
+    }
+
+    @if (showDependencyDialog)
+    {
+        <div class="card mb-3 border-info">
+            <div class="card-body">
+                <h5 class="card-title">Add Dependency to: @dependencyTargetTodo?.Title</h5>
+                <p class="text-muted">Select a task that must be completed before this one can start:</p>
+                <div class="list-group">
+                    @foreach (var todo in todos.Where(t => t.Id != dependencyTargetTodo?.Id &&
+                        !(dependencyTargetTodo?.Dependencies.Any(d => d.Id == t.Id) ?? false)))
+                    {
+                        <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                                @onclick="() => AddDependency(todo.Id)">
+                            <span>
+                                @if (todo.IsCompleted)
+                                {
+                                    <del>@todo.Title</del>
+                                }
+                                else
+                                {
+                                    @todo.Title
+                                }
+                            </span>
+                            <span class="badge @GetStatusBadgeClass(todo.Status.ToString()) rounded-pill">
+                                @GetStatusDisplayName(todo.Status)
+                            </span>
+                        </button>
+                    }
+                </div>
+                <button class="btn btn-secondary mt-2" @onclick="HideDependencyDialog">Close</button>
             </div>
         </div>
     }
@@ -107,7 +144,7 @@ else
             @foreach (var todo in FilteredTodos.OrderByDescending(t => t.CreatedAt))
             {
                 <div class="col">
-                    <div class="card h-100 @(todo.IsCompleted ? "border-success" : "")">
+                    <div class="card h-100 @(todo.IsCompleted ? "border-success" : "") @(todo.Dependencies.Any(d => !d.IsCompleted) ? "border-warning" : "")">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <div>
                                 <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
@@ -138,6 +175,41 @@ else
                             {
                                 <p class="card-text text-muted fst-italic">No description</p>
                             }
+
+                            @if (todo.Tags.Any())
+                            {
+                                <div class="mb-2">
+                                    @foreach (var tag in todo.Tags)
+                                    {
+                                        <span class="badge bg-info text-dark me-1">@tag.Name</span>
+                                    }
+                                </div>
+                            }
+
+                            @if (todo.Dependencies.Any())
+                            {
+                                <div class="mb-2">
+                                    <small class="text-muted"><strong>Depends on:</strong></small>
+                                    @foreach (var dep in todo.Dependencies)
+                                    {
+                                        <div class="d-flex align-items-center gap-1 ms-2">
+                                            <span class="badge @(dep.IsCompleted ? "bg-success" : "bg-warning") badge-sm">
+                                                @(dep.IsCompleted ? "Done" : "Pending")
+                                            </span>
+                                            <small>@dep.Title</small>
+                                            <button class="btn btn-sm btn-outline-danger p-0 px-1" style="font-size: 0.7rem;"
+                                                    @onclick="() => RemoveDependency(todo.Id, dep.Id)" title="Remove dependency">
+                                                x
+                                            </button>
+                                        </div>
+                                    }
+                                    @if (todo.Dependencies.Any(d => !d.IsCompleted))
+                                    {
+                                        <small class="text-warning d-block mt-1">Blocked by uncompleted dependencies</small>
+                                    }
+                                </div>
+                            }
+
                             <div class="mt-3">
                                 <small class="text-muted">
                                     <strong>Updated:</strong> @todo.UpdatedAt.ToString("g")
@@ -158,6 +230,9 @@ else
                                         <span>↶</span> Reopen
                                     </button>
                                 }
+                                <button class="btn btn-sm btn-info" @onclick="() => ShowDependencyDialog(todo)" title="Add dependency">
+                                    🔗
+                                </button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => DeleteTodo(todo.Id)">
                                     <span>🗑</span>
                                 </button>
@@ -185,8 +260,13 @@ else
     private string newTodoTitle = string.Empty;
     private string newTodoDescription = string.Empty;
     private int newTodoPriority = 1; // Default to Medium
+    private string newTodoTags = string.Empty;
     private string createError = string.Empty;
     private int? selectedStatusFilter = null;
+
+    // Dependency dialog
+    private bool showDependencyDialog = false;
+    private TodoItemDto? dependencyTargetTodo = null;
 
     private List<TodoItemDto> FilteredTodos
     {
@@ -207,8 +287,6 @@ else
 
     private void OnFilterChanged()
     {
-        // This method is called after the filter changes
-        // The UI will automatically refresh due to the FilteredTodos property
     }
 
     private string GetStatusDisplayName(int status)
@@ -237,6 +315,7 @@ else
         newTodoTitle = string.Empty;
         newTodoDescription = string.Empty;
         newTodoPriority = 1; // Reset to Medium
+        newTodoTags = string.Empty;
         createError = string.Empty;
     }
 
@@ -253,11 +332,18 @@ else
             return;
         }
 
+        var tags = string.IsNullOrWhiteSpace(newTodoTags)
+            ? null
+            : newTodoTags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToList();
+
         var request = new CreateTodoRequest
         {
             Title = newTodoTitle.Trim(),
             Description = string.IsNullOrWhiteSpace(newTodoDescription) ? null : newTodoDescription.Trim(),
-            Priority = newTodoPriority
+            Priority = newTodoPriority,
+            Tags = tags
         };
 
         var result = await TodoApi.CreateTodoAsync(request);
@@ -280,12 +366,12 @@ else
         if (todo.IsCompleted)
         {
             todo.CompletedAt = DateTime.UtcNow;
-            todo.Status = 2;//"Completed";
+            todo.Status = 2;
         }
         else
         {
             todo.CompletedAt = null;
-            todo.Status = 0;//"NotStarted";
+            todo.Status = 0;
         }
 
         await TodoApi.UpdateTodoAsync(todo.Id, todo);
@@ -298,6 +384,35 @@ else
         {
             await LoadTodos();
         }
+    }
+
+    private void ShowDependencyDialog(TodoItemDto todo)
+    {
+        dependencyTargetTodo = todo;
+        showDependencyDialog = true;
+    }
+
+    private void HideDependencyDialog()
+    {
+        showDependencyDialog = false;
+        dependencyTargetTodo = null;
+    }
+
+    private async Task AddDependency(Guid dependencyId)
+    {
+        if (dependencyTargetTodo != null)
+        {
+            await TodoApi.AddDependencyAsync(dependencyTargetTodo.Id, dependencyId);
+            await LoadTodos();
+            // Refresh the target todo reference
+            dependencyTargetTodo = todos.FirstOrDefault(t => t.Id == dependencyTargetTodo.Id);
+        }
+    }
+
+    private async Task RemoveDependency(Guid todoId, Guid dependencyId)
+    {
+        await TodoApi.RemoveDependencyAsync(todoId, dependencyId);
+        await LoadTodos();
     }
 
     private string GetStatusBadgeClass(string status)

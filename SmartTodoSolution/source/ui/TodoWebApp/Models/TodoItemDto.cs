@@ -12,4 +12,20 @@ public class TodoItemDto
     public DateTime UpdatedAt { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public List<TagDto> Tags { get; set; } = new();
+    public List<DependencyDto> Dependencies { get; set; } = new();
+}
+
+public class TagDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class DependencyDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public bool IsCompleted { get; set; }
+    public int Status { get; set; }
 }

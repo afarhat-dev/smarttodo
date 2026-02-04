@@ -38,6 +38,15 @@ public class TodoService : ITodoService
         if (createDto.Priority.HasValue)
             todoItem.UpdatePriority(createDto.Priority.Value);
 
+        if (createDto.Tags != null)
+        {
+            foreach (var tagName in createDto.Tags)
+            {
+                var tag = await _repository.GetOrCreateTagAsync(tagName);
+                todoItem.AddTag(tag);
+            }
+        }
+
         var createdItem = await _repository.AddAsync(todoItem);
         return MapToDto(createdItem);
     }
@@ -89,6 +98,27 @@ public class TodoService : ITodoService
             todoItem.UpdatePriority(updateDto.Priority.Value);
         }
 
+        if (updateDto.Tags != null)
+        {
+            // Remove tags not in the new list
+            var currentTags = todoItem.Tags.ToList();
+            foreach (var tag in currentTags)
+            {
+                if (!updateDto.Tags.Contains(tag.Name, StringComparer.OrdinalIgnoreCase))
+                    todoItem.RemoveTag(tag);
+            }
+
+            // Add new tags
+            foreach (var tagName in updateDto.Tags)
+            {
+                if (!todoItem.Tags.Any(t => t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var tag = await _repository.GetOrCreateTagAsync(tagName);
+                    todoItem.AddTag(tag);
+                }
+            }
+        }
+
         var updatedItem = await _repository.UpdateAsync(todoItem);
         return updatedItem != null ? MapToDto(updatedItem) : null;
     }
@@ -96,6 +126,26 @@ public class TodoService : ITodoService
     public async Task<bool> DeleteAsync(Guid id)
     {
         return await _repository.DeleteAsync(id);
+    }
+
+    public async Task<IEnumerable<TagDto>> GetAllTagsAsync()
+    {
+        var tags = await _repository.GetAllTagsAsync();
+        return tags.Select(t => new TagDto(t.Id, t.Name));
+    }
+
+    public async Task<TodoItemDto?> AddDependencyAsync(Guid todoId, Guid dependencyId)
+    {
+        await _repository.AddDependencyAsync(todoId, dependencyId);
+        var todoItem = await _repository.GetByIdAsync(todoId);
+        return todoItem != null ? MapToDto(todoItem) : null;
+    }
+
+    public async Task<TodoItemDto?> RemoveDependencyAsync(Guid todoId, Guid dependencyId)
+    {
+        await _repository.RemoveDependencyAsync(todoId, dependencyId);
+        var todoItem = await _repository.GetByIdAsync(todoId);
+        return todoItem != null ? MapToDto(todoItem) : null;
     }
 
     private static TodoItemDto MapToDto(TodoItem todoItem)
@@ -110,7 +160,9 @@ public class TodoService : ITodoService
             todoItem.CreatedAt,
             todoItem.UpdatedAt,
             todoItem.StartDate,
-            todoItem.CompletedAt
+            todoItem.CompletedAt,
+            todoItem.Tags.Select(t => new TagDto(t.Id, t.Name)).ToList(),
+            todoItem.Dependencies.Select(d => new DependencyDto(d.Id, d.Title, d.IsCompleted, d.Status)).ToList()
         );
     }
 }

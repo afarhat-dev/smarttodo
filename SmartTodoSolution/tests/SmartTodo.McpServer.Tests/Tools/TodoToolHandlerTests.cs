@@ -59,7 +59,9 @@ public class TodoToolHandlerTests
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
-            null
+            null,
+            new List<TagDto>(),
+            new List<DependencyDto>()
         );
 
         _mockTodoService.Setup(s => s.CreateAsync(It.IsAny<CreateTodoItemDto>()))
@@ -99,7 +101,9 @@ public class TodoToolHandlerTests
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
-            null
+            null,
+            new List<TagDto>(),
+            new List<DependencyDto>()
         );
 
         _mockTodoService.Setup(s => s.CreateAsync(It.IsAny<CreateTodoItemDto>()))
@@ -149,7 +153,9 @@ public class TodoToolHandlerTests
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
-            null
+            null,
+            new List<TagDto>(),
+            new List<DependencyDto>()
         );
 
         _mockTodoService.Setup(s => s.GetByIdAsync(id))
@@ -211,9 +217,9 @@ public class TodoToolHandlerTests
         var todos = new List<TodoItemDto>
         {
             new TodoItemDto(Guid.NewGuid(), "Todo 1", null, false, TodoStatus.NotStarted,
-                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, null, null),
+                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, null, null, new List<TagDto>(), new List<DependencyDto>()),
             new TodoItemDto(Guid.NewGuid(), "Todo 2", null, false, TodoStatus.NotStarted,
-                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, null, null)
+                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, null, null, new List<TagDto>(), new List<DependencyDto>())
         };
 
         _mockTodoService.Setup(s => s.GetAllAsync())
@@ -239,7 +245,7 @@ public class TodoToolHandlerTests
         var todos = new List<TodoItemDto>
         {
             new TodoItemDto(Guid.NewGuid(), "Todo 1", null, false, TodoStatus.InProgress,
-                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow, null)
+                TodoPriority.Medium, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow, null, new List<TagDto>(), new List<DependencyDto>())
         };
 
         _mockTodoService.Setup(s => s.GetFilteredAsync(It.IsAny<TodoFilter>()))
@@ -277,7 +283,9 @@ public class TodoToolHandlerTests
             DateTime.UtcNow,
             DateTime.UtcNow,
             null,
-            null
+            null,
+            new List<TagDto>(),
+            new List<DependencyDto>()
         );
 
         _mockTodoService.Setup(s => s.UpdateAsync(id, It.IsAny<UpdateTodoItemDto>()))
@@ -345,7 +353,9 @@ public class TodoToolHandlerTests
             DateTime.UtcNow,
             DateTime.UtcNow,
             DateTime.UtcNow,
-            null
+            null,
+            new List<TagDto>(),
+            new List<DependencyDto>()
         );
 
         _mockTodoService.Setup(s => s.UpdateAsync(id, It.IsAny<UpdateTodoItemDto>()))

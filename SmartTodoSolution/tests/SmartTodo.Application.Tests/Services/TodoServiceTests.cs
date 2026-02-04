@@ -107,7 +107,7 @@ public class TodoServiceTests
     public async Task GetFilteredAsync_WithFilter_ShouldReturnFilteredTodos()
     {
         // Arrange
-        var filter = new TodoFilter { Status = TodoStatus.InProgress };
+        var filter = new TodoFilter(Status: TodoStatus.InProgress);
         var todoItems = new List<TodoItem>
         {
             new TodoItem("Todo 1"),

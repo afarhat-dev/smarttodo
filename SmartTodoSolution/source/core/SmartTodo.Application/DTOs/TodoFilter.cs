@@ -13,5 +13,7 @@ public record TodoFilter(
     DateTime? StartDateTo = null,
     DateTime? CompletedFrom = null,
     DateTime? CompletedTo = null,
-    bool? IsCompleted = null
+    bool? IsCompleted = null,
+    string? Tag = null,
+    bool? HasDependencies = null
 );
