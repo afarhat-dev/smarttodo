@@ -17,6 +17,16 @@ public class TodoItem
     public DateTime? StartDate { get; private set; }
     public DateTime? CompletedAt { get; private set; }
     public TodoStatus Status { get; private set; }
+    public TodoPriority Priority { get; private set; }
+
+    private readonly List<Tag> _tags = new();
+    public IReadOnlyCollection<Tag> Tags => _tags.AsReadOnly();
+
+    private readonly List<TodoItem> _dependencies = new();
+    public IReadOnlyCollection<TodoItem> Dependencies => _dependencies.AsReadOnly();
+
+    private readonly List<TodoItem> _dependents = new();
+    public IReadOnlyCollection<TodoItem> Dependents => _dependents.AsReadOnly();
 
     private TodoItem()
     {
@@ -46,6 +56,7 @@ public class TodoItem
         Description = description;
         IsCompleted = false;
         Status = TodoStatus.NotStarted;
+        Priority = TodoPriority.Medium;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -152,5 +163,90 @@ public class TodoItem
             Status = TodoStatus.Cancelled;
             UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    public void UpdatePriority(TodoPriority priority)
+    {
+        Priority = priority;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void AddTag(Tag tag)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+
+        if (!_tags.Any(t => t.Id == tag.Id))
+        {
+            _tags.Add(tag);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void RemoveTag(Tag tag)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+
+        var existing = _tags.FirstOrDefault(t => t.Id == tag.Id);
+        if (existing != null)
+        {
+            _tags.Remove(existing);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void AddDependency(TodoItem dependency)
+    {
+        ArgumentNullException.ThrowIfNull(dependency);
+
+        if (dependency.Id == Id)
+            throw new InvalidOperationException("A task cannot depend on itself");
+
+        if (HasCircularDependency(dependency))
+            throw new InvalidOperationException("Adding this dependency would create a circular reference");
+
+        if (!_dependencies.Any(d => d.Id == dependency.Id))
+        {
+            _dependencies.Add(dependency);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void RemoveDependency(TodoItem dependency)
+    {
+        ArgumentNullException.ThrowIfNull(dependency);
+
+        var existing = _dependencies.FirstOrDefault(d => d.Id == dependency.Id);
+        if (existing != null)
+        {
+            _dependencies.Remove(existing);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public bool HasUncompletedDependencies()
+    {
+        return _dependencies.Any(d => !d.IsCompleted);
+    }
+
+    private bool HasCircularDependency(TodoItem dependency)
+    {
+        var visited = new HashSet<Guid> { Id };
+        return CheckCircular(dependency, visited);
+    }
+
+    private static bool CheckCircular(TodoItem item, HashSet<Guid> visited)
+    {
+        if (visited.Contains(item.Id))
+            return true;
+
+        visited.Add(item.Id);
+
+        foreach (var dep in item._dependencies)
+        {
+            if (CheckCircular(dep, visited))
+                return true;
+        }
+
+        return false;
     }
 }

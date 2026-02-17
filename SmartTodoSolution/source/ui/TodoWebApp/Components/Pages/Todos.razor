@@ -1,0 +1,469 @@
+@page "/todos"
+@using TodoWebApp.Services
+@using TodoWebApp.Models
+@inject ITodoApiService TodoApi
+@rendermode InteractiveServer
+
+<PageTitle>Todos</PageTitle>
+
+<h1>Todo List</h1>
+
+@if (isLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+}
+else
+{
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <button class="btn btn-primary" @onclick="ShowCreateDialog">
+                <span>➕</span> Add New Todo
+            </button>
+            <button class="btn btn-secondary ms-2" @onclick="LoadTodos">
+                <span>🔄</span> Refresh
+            </button>
+        </div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <label class="input-group-text">Filter by Status:</label>
+                <select class="form-select" @bind="selectedStatusFilter" @bind:after="OnFilterChanged">
+                    <option value="">All</option>
+                    <option value="0">Not Started</option>
+                    <option value="1">In Progress</option>
+                    <option value="2">Completed</option>
+                    <option value="3">On Hold</option>
+                    <option value="4">Cancelled</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (showCreateDialog)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Create New Todo</h5>
+                <div class="mb-3">
+                    <label for="newTitle" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="newTitle" @bind="newTodoTitle" placeholder="Enter todo title" />
+                </div>
+                <div class="mb-3">
+                    <label for="newDescription" class="form-label">Description (Optional)</label>
+                    <textarea class="form-control" id="newDescription" @bind="newTodoDescription" rows="3" placeholder="Enter description"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="newPriority" class="form-label">Priority</label>
+                    <select class="form-select" id="newPriority" @bind="newTodoPriority">
+                        <option value="0">🟢 Low</option>
+                        <option value="1" selected>🟡 Medium</option>
+                        <option value="2">🟠 High</option>
+                        <option value="3">🔴 Critical</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="newTags" class="form-label">Tags (comma-separated)</label>
+                    <input type="text" class="form-control" id="newTags" @bind="newTodoTags" placeholder="e.g. frontend, urgent, bug" />
+                </div>
+                <button class="btn btn-success" @onclick="CreateTodo">Create</button>
+                <button class="btn btn-secondary ms-2" @onclick="HideCreateDialog">Cancel</button>
+                @if (!string.IsNullOrEmpty(createError))
+                {
+                    <div class="alert alert-danger mt-2">@createError</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (showDependencyDialog)
+    {
+        <div class="card mb-3 border-info">
+            <div class="card-body">
+                <h5 class="card-title">Add Dependency to: @dependencyTargetTodo?.Title</h5>
+                <p class="text-muted">Select a task that must be completed before this one can start:</p>
+                <div class="list-group">
+                    @foreach (var todo in todos.Where(t => t.Id != dependencyTargetTodo?.Id &&
+                        !(dependencyTargetTodo?.Dependencies.Any(d => d.Id == t.Id) ?? false)))
+                    {
+                        <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                                @onclick="() => AddDependency(todo.Id)">
+                            <span>
+                                @if (todo.IsCompleted)
+                                {
+                                    <del>@todo.Title</del>
+                                }
+                                else
+                                {
+                                    @todo.Title
+                                }
+                            </span>
+                            <span class="badge @GetStatusBadgeClass(todo.Status.ToString()) rounded-pill">
+                                @GetStatusDisplayName(todo.Status)
+                            </span>
+                        </button>
+                    }
+                </div>
+                <button class="btn btn-secondary mt-2" @onclick="HideDependencyDialog">Close</button>
+            </div>
+        </div>
+    }
+
+    @if (FilteredTodos.Count == 0)
+    {
+        <div class="alert alert-info">
+            @if (!selectedStatusFilter.HasValue)
+            {
+                <text>No todos found. Create your first todo to get started!</text>
+            }
+            else
+            {
+                <text>No todos found with status "@GetStatusDisplayName(selectedStatusFilter.Value)". Try a different filter.</text>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <span class="badge bg-primary">Showing: @FilteredTodos.Count</span>
+                    @if (selectedStatusFilter.HasValue)
+                    {
+                        <span class="badge bg-info ms-2">Filtered by: @GetStatusDisplayName(selectedStatusFilter.Value)</span>
+                    }
+                    <span class="badge bg-secondary ms-2">Total: @todos.Count</span>
+                    <span class="badge bg-success ms-2">Completed: @todos.Count(t => t.IsCompleted)</span>
+                    <span class="badge bg-warning ms-2">In Progress: @todos.Count(t => t.Status == 1)</span>
+                    <span class="badge bg-secondary ms-2">Not Started: @todos.Count(t => t.Status == 0)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var todo in FilteredTodos.OrderByDescending(t => t.CreatedAt))
+            {
+                <div class="col">
+                    <div class="card h-100 @(todo.IsCompleted ? "border-success" : "") @(todo.Dependencies.Any(d => !d.IsCompleted) ? "border-warning" : "")">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge @GetStatusBadgeClass(todo.Status.ToString())">
+                                    @(todo.Status == 0 ? "Pending" : todo.Status == 1 ? "Started" : "Completed")
+                                </span>
+                                <span class="badge @GetPriorityBadgeClass(todo.Priority) ms-1" @onclick="() => CyclePriority(todo)" style="cursor: pointer;" title="Click to change priority">
+                                    @GetPriorityDisplayName(todo.Priority)
+                                </span>
+                            </div>
+                            <small class="text-muted">@todo.CreatedAt.ToString("g")</small>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                @if (todo.IsCompleted)
+                                {
+                                    <del>@todo.Title</del>
+                                }
+                                else
+                                {
+                                    @todo.Title
+                                }
+                            </h5>
+                            @if (!string.IsNullOrEmpty(todo.Description))
+                            {
+                                <p class="card-text">@todo.Description</p>
+                            }
+                            else
+                            {
+                                <p class="card-text text-muted fst-italic">No description</p>
+                            }
+
+                            @if (todo.Tags.Any())
+                            {
+                                <div class="mb-2">
+                                    @foreach (var tag in todo.Tags)
+                                    {
+                                        <span class="badge bg-info text-dark me-1">@tag.Name</span>
+                                    }
+                                </div>
+                            }
+
+                            @if (todo.Dependencies.Any())
+                            {
+                                <div class="mb-2">
+                                    <small class="text-muted"><strong>Depends on:</strong></small>
+                                    @foreach (var dep in todo.Dependencies)
+                                    {
+                                        <div class="d-flex align-items-center gap-1 ms-2">
+                                            <span class="badge @(dep.IsCompleted ? "bg-success" : "bg-warning") badge-sm">
+                                                @(dep.IsCompleted ? "Done" : "Pending")
+                                            </span>
+                                            <small>@dep.Title</small>
+                                            <button class="btn btn-sm btn-outline-danger p-0 px-1" style="font-size: 0.7rem;"
+                                                    @onclick="() => RemoveDependency(todo.Id, dep.Id)" title="Remove dependency">
+                                                x
+                                            </button>
+                                        </div>
+                                    }
+                                    @if (todo.Dependencies.Any(d => !d.IsCompleted))
+                                    {
+                                        <small class="text-warning d-block mt-1">Blocked by uncompleted dependencies</small>
+                                    }
+                                </div>
+                            }
+
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <strong>Updated:</strong> @todo.UpdatedAt.ToString("g")
+                                </small>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex gap-2 mb-2">
+                                @if (!todo.IsCompleted)
+                                {
+                                    <button class="btn btn-sm btn-success flex-fill" @onclick="() => ToggleComplete(todo)">
+                                        <span>✓</span> Complete
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-warning flex-fill" @onclick="() => ToggleComplete(todo)">
+                                        <span>↶</span> Reopen
+                                    </button>
+                                }
+                                <button class="btn btn-sm btn-info" @onclick="() => ShowDependencyDialog(todo)" title="Add dependency">
+                                    🔗
+                                </button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteTodo(todo.Id)">
+                                    <span>🗑</span>
+                                </button>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <select class="form-select form-select-sm" @bind="todo.Priority" @bind:after="() => UpdatePriority(todo)" title="Change priority">
+                                    <option value="0">🟢 Low</option>
+                                    <option value="1">🟡 Medium</option>
+                                    <option value="2">🟠 High</option>
+                                    <option value="3">🔴 Critical</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<TodoItemDto> todos = new();
+    private bool isLoading = true;
+    private bool showCreateDialog = false;
+    private string newTodoTitle = string.Empty;
+    private string newTodoDescription = string.Empty;
+    private int newTodoPriority = 1; // Default to Medium
+    private string newTodoTags = string.Empty;
+    private string createError = string.Empty;
+    private int? selectedStatusFilter = null;
+
+    // Dependency dialog
+    private bool showDependencyDialog = false;
+    private TodoItemDto? dependencyTargetTodo = null;
+
+    private List<TodoItemDto> FilteredTodos
+    {
+        get
+        {
+            if (!selectedStatusFilter.HasValue)
+            {
+                return todos;
+            }
+            return todos.Where(t => t.Status == selectedStatusFilter.Value).ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTodos();
+    }
+
+    private void OnFilterChanged()
+    {
+    }
+
+    private string GetStatusDisplayName(int status)
+    {
+        return status switch
+        {
+            0 => "Not Started",
+            1 => "In Progress",
+            2 => "Completed",
+            3 => "On Hold",
+            4 => "Cancelled",
+            _ => "Unknown"
+        };
+    }
+
+    private async Task LoadTodos()
+    {
+        isLoading = true;
+        todos = await TodoApi.GetAllTodosAsync();
+        isLoading = false;
+    }
+
+    private void ShowCreateDialog()
+    {
+        showCreateDialog = true;
+        newTodoTitle = string.Empty;
+        newTodoDescription = string.Empty;
+        newTodoPriority = 1; // Reset to Medium
+        newTodoTags = string.Empty;
+        createError = string.Empty;
+    }
+
+    private void HideCreateDialog()
+    {
+        showCreateDialog = false;
+    }
+
+    private async Task CreateTodo()
+    {
+        if (string.IsNullOrWhiteSpace(newTodoTitle))
+        {
+            createError = "Title is required";
+            return;
+        }
+
+        var tags = string.IsNullOrWhiteSpace(newTodoTags)
+            ? null
+            : newTodoTags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToList();
+
+        var request = new CreateTodoRequest
+        {
+            Title = newTodoTitle.Trim(),
+            Description = string.IsNullOrWhiteSpace(newTodoDescription) ? null : newTodoDescription.Trim(),
+            Priority = newTodoPriority,
+            Tags = tags
+        };
+
+        var result = await TodoApi.CreateTodoAsync(request);
+        if (result != null)
+        {
+            await LoadTodos();
+            HideCreateDialog();
+        }
+        else
+        {
+            createError = "Failed to create todo. Please try again.";
+        }
+    }
+
+    private async Task ToggleComplete(TodoItemDto todo)
+    {
+        todo.IsCompleted = !todo.IsCompleted;
+        todo.UpdatedAt = DateTime.UtcNow;
+
+        if (todo.IsCompleted)
+        {
+            todo.CompletedAt = DateTime.UtcNow;
+            todo.Status = 2;
+        }
+        else
+        {
+            todo.CompletedAt = null;
+            todo.Status = 0;
+        }
+
+        await TodoApi.UpdateTodoAsync(todo.Id, todo);
+        await LoadTodos();
+    }
+
+    private async Task DeleteTodo(Guid id)
+    {
+        if (await TodoApi.DeleteTodoAsync(id))
+        {
+            await LoadTodos();
+        }
+    }
+
+    private void ShowDependencyDialog(TodoItemDto todo)
+    {
+        dependencyTargetTodo = todo;
+        showDependencyDialog = true;
+    }
+
+    private void HideDependencyDialog()
+    {
+        showDependencyDialog = false;
+        dependencyTargetTodo = null;
+    }
+
+    private async Task AddDependency(Guid dependencyId)
+    {
+        if (dependencyTargetTodo != null)
+        {
+            await TodoApi.AddDependencyAsync(dependencyTargetTodo.Id, dependencyId);
+            await LoadTodos();
+            // Refresh the target todo reference
+            dependencyTargetTodo = todos.FirstOrDefault(t => t.Id == dependencyTargetTodo.Id);
+        }
+    }
+
+    private async Task RemoveDependency(Guid todoId, Guid dependencyId)
+    {
+        await TodoApi.RemoveDependencyAsync(todoId, dependencyId);
+        await LoadTodos();
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "NotStarted" => "bg-secondary",
+            "InProgress" => "bg-warning",
+            "Completed" => "bg-success",
+            "OnHold" => "bg-info",
+            "Cancelled" => "bg-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityDisplayName(int priority)
+    {
+        return priority switch
+        {
+            0 => "🟢 Low",
+            1 => "🟡 Medium",
+            2 => "🟠 High",
+            3 => "🔴 Critical",
+            _ => "🟡 Medium"
+        };
+    }
+
+    private string GetPriorityBadgeClass(int priority)
+    {
+        return priority switch
+        {
+            0 => "bg-success",      // Low - Green
+            1 => "bg-warning",      // Medium - Yellow
+            2 => "bg-danger",       // High - Orange/Red
+            3 => "bg-dark bg-gradient", // Critical - Dark with gradient
+            _ => "bg-warning"
+        };
+    }
+
+    private async Task CyclePriority(TodoItemDto todo)
+    {
+        // Cycle through priorities: Low -> Medium -> High -> Critical -> Low
+        todo.Priority = (todo.Priority + 1) % 4;
+        await TodoApi.UpdateTodoAsync(todo.Id, todo);
+        await LoadTodos();
+    }
+
+    private async Task UpdatePriority(TodoItemDto todo)
+    {
+        // Update priority via dropdown selector
+        await TodoApi.UpdateTodoAsync(todo.Id, todo);
+        await LoadTodos();
+    }
+}

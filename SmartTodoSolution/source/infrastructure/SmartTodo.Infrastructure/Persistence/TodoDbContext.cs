@@ -11,6 +11,7 @@ public class TodoDbContext : DbContext
     }
 
     public DbSet<TodoItem> TodoItems => Set<TodoItem>();
+    public DbSet<Tag> Tags => Set<Tag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,5 +19,6 @@ public class TodoDbContext : DbContext
 
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new TodoItemConfiguration());
+        modelBuilder.ApplyConfiguration(new TagConfiguration());
     }
 }

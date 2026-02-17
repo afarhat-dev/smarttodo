@@ -1,0 +1,36 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy solution and project files
+COPY ["source/ui/TodoWebApp/TodoWebApp.csproj", "source/ui/TodoWebApp/"]
+COPY ["source/core/SmartTodo.Domain/SmartTodo.Domain.csproj", "source/core/SmartTodo.Domain/"]
+
+# Restore dependencies
+RUN dotnet restore "source/ui/TodoWebApp/TodoWebApp.csproj"
+
+# Copy the rest of the source code
+COPY . .
+
+# Build the application
+WORKDIR "/src/source/ui/TodoWebApp"
+RUN dotnet build "TodoWebApp.csproj" -c Release -o /app/build
+
+# Publish stage
+FROM build AS publish
+RUN dotnet publish "TodoWebApp.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+
+# Copy published application
+COPY --from=publish /app/publish .
+
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Docker
+
+ENTRYPOINT ["dotnet", "TodoWebApp.dll"]

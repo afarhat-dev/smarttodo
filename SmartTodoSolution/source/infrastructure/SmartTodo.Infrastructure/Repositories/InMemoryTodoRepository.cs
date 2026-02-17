@@ -8,8 +8,7 @@ namespace SmartTodo.Infrastructure.Repositories;
 public class InMemoryTodoRepository : ITodoRepository
 {
     private static readonly ConcurrentDictionary<Guid, TodoItem> _todos = new();
-
-    
+    private static readonly ConcurrentDictionary<Guid, Tag> _tags = new();
 
     public Task<TodoItem?> GetByIdAsync(Guid id)
     {
@@ -29,6 +28,11 @@ public class InMemoryTodoRepository : ITodoRepository
         if (filter.Status.HasValue)
         {
             query = query.Where(t => t.Status == filter.Status.Value);
+        }
+
+        if (filter.Priority.HasValue)
+        {
+            query = query.Where(t => t.Priority == filter.Priority.Value);
         }
 
         if (filter.IsCompleted.HasValue)
@@ -76,6 +80,20 @@ public class InMemoryTodoRepository : ITodoRepository
             query = query.Where(t => t.CompletedAt.HasValue && t.CompletedAt.Value <= filter.CompletedTo.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(filter.Tag))
+        {
+            var tagName = filter.Tag.Trim().ToLowerInvariant();
+            query = query.Where(t => t.Tags.Any(tag => tag.Name == tagName));
+        }
+
+        if (filter.HasDependencies.HasValue)
+        {
+            if (filter.HasDependencies.Value)
+                query = query.Where(t => t.Dependencies.Any());
+            else
+                query = query.Where(t => !t.Dependencies.Any());
+        }
+
         return Task.FromResult<IEnumerable<TodoItem>>(query.OrderBy(t => t.CreatedAt).ToList());
     }
 
@@ -101,5 +119,53 @@ public class InMemoryTodoRepository : ITodoRepository
     public Task<bool> DeleteAsync(Guid id)
     {
         return Task.FromResult(_todos.TryRemove(id, out _));
+    }
+
+    public Task<Tag?> GetTagByNameAsync(string name)
+    {
+        var normalizedName = name.Trim().ToLowerInvariant();
+        var tag = _tags.Values.FirstOrDefault(t => t.Name == normalizedName);
+        return Task.FromResult(tag);
+    }
+
+    public Task<Tag> GetOrCreateTagAsync(string name)
+    {
+        var normalizedName = name.Trim().ToLowerInvariant();
+        var existing = _tags.Values.FirstOrDefault(t => t.Name == normalizedName);
+        if (existing != null)
+            return Task.FromResult(existing);
+
+        var tag = new Tag(name);
+        _tags.TryAdd(tag.Id, tag);
+        return Task.FromResult(tag);
+    }
+
+    public Task<IEnumerable<Tag>> GetAllTagsAsync()
+    {
+        return Task.FromResult<IEnumerable<Tag>>(_tags.Values.OrderBy(t => t.Name).ToList());
+    }
+
+    public Task AddDependencyAsync(Guid todoId, Guid dependencyId)
+    {
+        if (!_todos.TryGetValue(todoId, out var todo))
+            throw new InvalidOperationException($"Todo with ID {todoId} not found");
+
+        if (!_todos.TryGetValue(dependencyId, out var dependency))
+            throw new InvalidOperationException($"Dependency todo with ID {dependencyId} not found");
+
+        todo.AddDependency(dependency);
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveDependencyAsync(Guid todoId, Guid dependencyId)
+    {
+        if (!_todos.TryGetValue(todoId, out var todo))
+            throw new InvalidOperationException($"Todo with ID {todoId} not found");
+
+        if (!_todos.TryGetValue(dependencyId, out var dependency))
+            throw new InvalidOperationException($"Dependency todo with ID {dependencyId} not found");
+
+        todo.RemoveDependency(dependency);
+        return Task.CompletedTask;
     }
 }

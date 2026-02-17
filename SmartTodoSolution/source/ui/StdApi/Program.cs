@@ -1,11 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using Serilog;
 using SmartTodo.Application.Interfaces;
 using SmartTodo.Application.Services;
 using SmartTodo.Infrastructure.Persistence;
 using SmartTodo.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "SmartTodo.API")
+        .Enrich.WithMachineName();
+});
 
 // Add services to the container.
 var usePostgreSql = builder.Configuration.GetValue<bool>("Database:UsePostgreSQL");
@@ -52,6 +63,9 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Configure Serilog request logging
+app.UseSerilogRequestLogging();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -68,4 +82,17 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.UseDeveloperExceptionPage();
-app.Run();
+
+try
+{
+    Log.Information("Starting SmartTodo API");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

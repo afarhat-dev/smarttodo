@@ -11,4 +11,13 @@ public interface ITodoRepository
     Task<TodoItem> AddAsync(TodoItem todoItem);
     Task<TodoItem?> UpdateAsync(TodoItem todoItem);
     Task<bool> DeleteAsync(Guid id);
+
+    // Tag operations
+    Task<Tag?> GetTagByNameAsync(string name);
+    Task<Tag> GetOrCreateTagAsync(string name);
+    Task<IEnumerable<Tag>> GetAllTagsAsync();
+
+    // Dependency operations
+    Task AddDependencyAsync(Guid todoId, Guid dependencyId);
+    Task RemoveDependencyAsync(Guid todoId, Guid dependencyId);
 }

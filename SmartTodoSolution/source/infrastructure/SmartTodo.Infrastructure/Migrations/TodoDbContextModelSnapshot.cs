@@ -22,6 +22,28 @@ namespace SmartTodo.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("SmartTodo.Domain.Entities.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Tags_Name");
+
+                    b.ToTable("Tags", (string)null);
+                });
+
             modelBuilder.Entity("SmartTodo.Domain.Entities.TodoItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -39,6 +61,10 @@ namespace SmartTodo.Infrastructure.Migrations
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("timestamp with time zone");
@@ -63,6 +89,9 @@ namespace SmartTodo.Infrastructure.Migrations
                     b.HasIndex("IsCompleted")
                         .HasDatabaseName("IX_TodoItems_IsCompleted");
 
+                    b.HasIndex("Priority")
+                        .HasDatabaseName("IX_TodoItems_Priority");
+
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_TodoItems_Status");
 
@@ -70,6 +99,66 @@ namespace SmartTodo.Infrastructure.Migrations
                         .HasDatabaseName("IX_TodoItems_UpdatedAt");
 
                     b.ToTable("TodoItems", (string)null);
+                });
+
+            modelBuilder.Entity("TodoItemDependencies", b =>
+                {
+                    b.Property<Guid>("TodoItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DependencyId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TodoItemId", "DependencyId");
+
+                    b.HasIndex("DependencyId");
+
+                    b.ToTable("TodoItemDependencies", (string)null);
+                });
+
+            modelBuilder.Entity("TodoItemTags", b =>
+                {
+                    b.Property<Guid>("TodoItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TodoItemId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("TodoItemTags", (string)null);
+                });
+
+            modelBuilder.Entity("TodoItemDependencies", b =>
+                {
+                    b.HasOne("SmartTodo.Domain.Entities.TodoItem", null)
+                        .WithMany()
+                        .HasForeignKey("DependencyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartTodo.Domain.Entities.TodoItem", null)
+                        .WithMany()
+                        .HasForeignKey("TodoItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TodoItemTags", b =>
+                {
+                    b.HasOne("SmartTodo.Domain.Entities.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartTodo.Domain.Entities.TodoItem", null)
+                        .WithMany()
+                        .HasForeignKey("TodoItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

@@ -477,4 +477,180 @@ public class TodoItemTests
     }
 
     #endregion
+
+    #region Tag Tests
+
+    [Fact]
+    public void AddTag_ShouldAddTag()
+    {
+        // Arrange
+        var todo = new TodoItem("Test Todo");
+        var tag = new Tag("test-tag");
+
+        // Act
+        todo.AddTag(tag);
+
+        // Assert
+        todo.Tags.Should().HaveCount(1);
+        todo.Tags.First().Name.Should().Be("test-tag");
+    }
+
+    [Fact]
+    public void AddTag_DuplicateTag_ShouldNotAddDuplicate()
+    {
+        // Arrange
+        var todo = new TodoItem("Test Todo");
+        var tag = new Tag("test-tag");
+
+        // Act
+        todo.AddTag(tag);
+        todo.AddTag(tag);
+
+        // Assert
+        todo.Tags.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void RemoveTag_ShouldRemoveTag()
+    {
+        // Arrange
+        var todo = new TodoItem("Test Todo");
+        var tag = new Tag("test-tag");
+        todo.AddTag(tag);
+
+        // Act
+        todo.RemoveTag(tag);
+
+        // Assert
+        todo.Tags.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddTag_NullTag_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var todo = new TodoItem("Test Todo");
+
+        // Act
+        var act = () => todo.AddTag(null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
+
+    #region Dependency Tests
+
+    [Fact]
+    public void AddDependency_ShouldAddDependency()
+    {
+        // Arrange
+        var todo = new TodoItem("Main Task");
+        var dependency = new TodoItem("Prerequisite Task");
+
+        // Act
+        todo.AddDependency(dependency);
+
+        // Assert
+        todo.Dependencies.Should().HaveCount(1);
+        todo.Dependencies.First().Title.Should().Be("Prerequisite Task");
+    }
+
+    [Fact]
+    public void AddDependency_SelfReference_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var todo = new TodoItem("Test Todo");
+
+        // Act
+        var act = () => todo.AddDependency(todo);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("A task cannot depend on itself");
+    }
+
+    [Fact]
+    public void AddDependency_DuplicateDependency_ShouldNotAddDuplicate()
+    {
+        // Arrange
+        var todo = new TodoItem("Main Task");
+        var dependency = new TodoItem("Prerequisite Task");
+
+        // Act
+        todo.AddDependency(dependency);
+        todo.AddDependency(dependency);
+
+        // Assert
+        todo.Dependencies.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void RemoveDependency_ShouldRemoveDependency()
+    {
+        // Arrange
+        var todo = new TodoItem("Main Task");
+        var dependency = new TodoItem("Prerequisite Task");
+        todo.AddDependency(dependency);
+
+        // Act
+        todo.RemoveDependency(dependency);
+
+        // Assert
+        todo.Dependencies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void HasUncompletedDependencies_WithIncompleteDeps_ShouldReturnTrue()
+    {
+        // Arrange
+        var todo = new TodoItem("Main Task");
+        var dependency = new TodoItem("Prerequisite Task");
+        todo.AddDependency(dependency);
+
+        // Act & Assert
+        todo.HasUncompletedDependencies().Should().BeTrue();
+    }
+
+    [Fact]
+    public void HasUncompletedDependencies_WithCompletedDeps_ShouldReturnFalse()
+    {
+        // Arrange
+        var todo = new TodoItem("Main Task");
+        var dependency = new TodoItem("Prerequisite Task");
+        dependency.MarkAsCompleted();
+        todo.AddDependency(dependency);
+
+        // Act & Assert
+        todo.HasUncompletedDependencies().Should().BeFalse();
+    }
+
+    [Fact]
+    public void HasUncompletedDependencies_NoDeps_ShouldReturnFalse()
+    {
+        // Arrange
+        var todo = new TodoItem("Main Task");
+
+        // Act & Assert
+        todo.HasUncompletedDependencies().Should().BeFalse();
+    }
+
+    [Fact]
+    public void AddDependency_CircularDependency_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var todoA = new TodoItem("Task A");
+        var todoB = new TodoItem("Task B");
+        todoA.AddDependency(todoB);
+
+        // Act
+        var act = () => todoB.AddDependency(todoA);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Adding this dependency would create a circular reference");
+    }
+
+    #endregion
 }

@@ -28,6 +28,12 @@ public class TodoToolHandler
             "pause_todo" => await PauseTodoAsync(parameters),
             "resume_todo" => await ResumeTodoAsync(parameters),
             "cancel_todo" => await CancelTodoAsync(parameters),
+            "set_todo_priority" => await SetTodoPriorityAsync(parameters),
+            "add_todo_tag" => await AddTodoTagAsync(parameters),
+            "remove_todo_tag" => await RemoveTodoTagAsync(parameters),
+            "list_tags" => await ListTagsAsync(),
+            "add_todo_dependency" => await AddTodoDependencyAsync(parameters),
+            "remove_todo_dependency" => await RemoveTodoDependencyAsync(parameters),
             _ => throw new InvalidOperationException($"Unknown tool: {toolName}")
         };
     }
@@ -44,7 +50,29 @@ public class TodoToolHandler
             ? descProp.GetString()
             : null;
 
-        var createDto = new CreateTodoItemDto(title, description);
+        TodoPriority? priority = null;
+        if (parameters.Value.TryGetProperty("priority", out var priorityProp) && priorityProp.ValueKind == JsonValueKind.String)
+        {
+            var priorityString = priorityProp.GetString();
+            if (Enum.TryParse<TodoPriority>(priorityString, out var parsedPriority))
+            {
+                priority = parsedPriority;
+            }
+        }
+
+        List<string>? tags = null;
+        if (parameters.Value.TryGetProperty("tags", out var tagsProp) && tagsProp.ValueKind == JsonValueKind.String)
+        {
+            var tagsString = tagsProp.GetString();
+            if (!string.IsNullOrWhiteSpace(tagsString))
+            {
+                tags = tagsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .ToList();
+            }
+        }
+
+        var createDto = new CreateTodoItemDto(title, description, priority, tags);
         var result = await _todoService.CreateAsync(createDto);
 
         return new
@@ -142,7 +170,29 @@ public class TodoToolHandler
             }
         }
 
-        var updateDto = new UpdateTodoItemDto(title, description, isCompleted, status);
+        TodoPriority? priority = null;
+        if (parameters.Value.TryGetProperty("priority", out var priorityProp) && priorityProp.ValueKind == JsonValueKind.String)
+        {
+            var priorityString = priorityProp.GetString();
+            if (Enum.TryParse<TodoPriority>(priorityString, out var parsedPriority))
+            {
+                priority = parsedPriority;
+            }
+        }
+
+        List<string>? tags = null;
+        if (parameters.Value.TryGetProperty("tags", out var tagsProp) && tagsProp.ValueKind == JsonValueKind.String)
+        {
+            var tagsString = tagsProp.GetString();
+            if (tagsString != null)
+            {
+                tags = tagsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .ToList();
+            }
+        }
+
+        var updateDto = new UpdateTodoItemDto(title, description, isCompleted, status, priority, tags);
         var result = await _todoService.UpdateAsync(id, updateDto);
 
         if (result == null)
@@ -216,6 +266,205 @@ public class TodoToolHandler
         return await UpdateTodoStatusAsync(parameters, TodoStatus.Cancelled, "cancelled");
     }
 
+    private async Task<object> SetTodoPriorityAsync(JsonElement? parameters)
+    {
+        if (!parameters.HasValue)
+            throw new ArgumentException("Parameters are required for set_todo_priority");
+
+        var idString = parameters.Value.GetProperty("id").GetString()
+            ?? throw new ArgumentException("ID is required");
+
+        if (!Guid.TryParse(idString, out var id))
+            throw new ArgumentException("Invalid ID format");
+
+        var priorityString = parameters.Value.GetProperty("priority").GetString()
+            ?? throw new ArgumentException("Priority is required");
+
+        if (!Enum.TryParse<TodoPriority>(priorityString, true, out var priority))
+            throw new ArgumentException($"Invalid priority value. Valid values are: Low, Medium, High, Critical");
+
+        var updateDto = new UpdateTodoItemDto(null, null, null, null, priority);
+        var result = await _todoService.UpdateAsync(id, updateDto);
+
+        if (result == null)
+        {
+            return new
+            {
+                success = false,
+                message = $"Todo with ID {id} not found"
+            };
+        }
+
+        return new
+        {
+            success = true,
+            todo = result,
+            message = $"Todo '{result.Title}' priority set to {priority} successfully"
+        };
+    }
+
+    private async Task<object> AddTodoTagAsync(JsonElement? parameters)
+    {
+        if (!parameters.HasValue)
+            throw new ArgumentException("Parameters are required for add_todo_tag");
+
+        var idString = parameters.Value.GetProperty("id").GetString()
+            ?? throw new ArgumentException("ID is required");
+
+        if (!Guid.TryParse(idString, out var id))
+            throw new ArgumentException("Invalid ID format");
+
+        var tagName = parameters.Value.GetProperty("tag").GetString()
+            ?? throw new ArgumentException("Tag is required");
+
+        var todo = await _todoService.GetByIdAsync(id);
+        if (todo == null)
+        {
+            return new
+            {
+                success = false,
+                message = $"Todo with ID {id} not found"
+            };
+        }
+
+        var existingTags = todo.Tags.Select(t => t.Name).ToList();
+        existingTags.Add(tagName);
+
+        var updateDto = new UpdateTodoItemDto(null, null, null, null, null, existingTags);
+        var result = await _todoService.UpdateAsync(id, updateDto);
+
+        return new
+        {
+            success = true,
+            todo = result,
+            message = $"Tag '{tagName}' added to todo '{result!.Title}'"
+        };
+    }
+
+    private async Task<object> RemoveTodoTagAsync(JsonElement? parameters)
+    {
+        if (!parameters.HasValue)
+            throw new ArgumentException("Parameters are required for remove_todo_tag");
+
+        var idString = parameters.Value.GetProperty("id").GetString()
+            ?? throw new ArgumentException("ID is required");
+
+        if (!Guid.TryParse(idString, out var id))
+            throw new ArgumentException("Invalid ID format");
+
+        var tagName = parameters.Value.GetProperty("tag").GetString()
+            ?? throw new ArgumentException("Tag is required");
+
+        var todo = await _todoService.GetByIdAsync(id);
+        if (todo == null)
+        {
+            return new
+            {
+                success = false,
+                message = $"Todo with ID {id} not found"
+            };
+        }
+
+        var existingTags = todo.Tags
+            .Select(t => t.Name)
+            .Where(t => !t.Equals(tagName.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var updateDto = new UpdateTodoItemDto(null, null, null, null, null, existingTags);
+        var result = await _todoService.UpdateAsync(id, updateDto);
+
+        return new
+        {
+            success = true,
+            todo = result,
+            message = $"Tag '{tagName}' removed from todo '{result!.Title}'"
+        };
+    }
+
+    private async Task<object> ListTagsAsync()
+    {
+        var tags = await _todoService.GetAllTagsAsync();
+
+        return new
+        {
+            success = true,
+            tags,
+            count = tags.Count()
+        };
+    }
+
+    private async Task<object> AddTodoDependencyAsync(JsonElement? parameters)
+    {
+        if (!parameters.HasValue)
+            throw new ArgumentException("Parameters are required for add_todo_dependency");
+
+        var idString = parameters.Value.GetProperty("id").GetString()
+            ?? throw new ArgumentException("ID is required");
+
+        if (!Guid.TryParse(idString, out var id))
+            throw new ArgumentException("Invalid ID format");
+
+        var dependencyIdString = parameters.Value.GetProperty("dependencyId").GetString()
+            ?? throw new ArgumentException("Dependency ID is required");
+
+        if (!Guid.TryParse(dependencyIdString, out var dependencyId))
+            throw new ArgumentException("Invalid dependency ID format");
+
+        var result = await _todoService.AddDependencyAsync(id, dependencyId);
+
+        if (result == null)
+        {
+            return new
+            {
+                success = false,
+                message = $"Todo with ID {id} not found"
+            };
+        }
+
+        return new
+        {
+            success = true,
+            todo = result,
+            message = $"Dependency added successfully to todo '{result.Title}'"
+        };
+    }
+
+    private async Task<object> RemoveTodoDependencyAsync(JsonElement? parameters)
+    {
+        if (!parameters.HasValue)
+            throw new ArgumentException("Parameters are required for remove_todo_dependency");
+
+        var idString = parameters.Value.GetProperty("id").GetString()
+            ?? throw new ArgumentException("ID is required");
+
+        if (!Guid.TryParse(idString, out var id))
+            throw new ArgumentException("Invalid ID format");
+
+        var dependencyIdString = parameters.Value.GetProperty("dependencyId").GetString()
+            ?? throw new ArgumentException("Dependency ID is required");
+
+        if (!Guid.TryParse(dependencyIdString, out var dependencyId))
+            throw new ArgumentException("Invalid dependency ID format");
+
+        var result = await _todoService.RemoveDependencyAsync(id, dependencyId);
+
+        if (result == null)
+        {
+            return new
+            {
+                success = false,
+                message = $"Todo with ID {id} not found"
+            };
+        }
+
+        return new
+        {
+            success = true,
+            todo = result,
+            message = $"Dependency removed successfully from todo '{result.Title}'"
+        };
+    }
+
     private async Task<object> UpdateTodoStatusAsync(JsonElement? parameters, TodoStatus status, string action)
     {
         if (!parameters.HasValue)
@@ -227,7 +476,7 @@ public class TodoToolHandler
         if (!Guid.TryParse(idString, out var id))
             throw new ArgumentException("Invalid ID format");
 
-        var updateDto = new UpdateTodoItemDto(null, null, null, status);
+        var updateDto = new UpdateTodoItemDto(null, null, null, status, null);
         var result = await _todoService.UpdateAsync(id, updateDto);
 
         if (result == null)
@@ -259,9 +508,25 @@ public class TodoToolHandler
             }
         }
 
+        TodoPriority? priority = null;
+        if (parameters.TryGetProperty("priority", out var priorityProp) && priorityProp.ValueKind == JsonValueKind.String)
+        {
+            var priorityString = priorityProp.GetString();
+            if (Enum.TryParse<TodoPriority>(priorityString, out var parsedPriority))
+            {
+                priority = parsedPriority;
+            }
+        }
+
         var isCompleted = parameters.TryGetProperty("isCompleted", out var completedProp)
             ? completedProp.GetBoolean()
             : (bool?)null;
+
+        string? tag = null;
+        if (parameters.TryGetProperty("tag", out var tagProp) && tagProp.ValueKind == JsonValueKind.String)
+        {
+            tag = tagProp.GetString();
+        }
 
         var createdFrom = TryGetDateTime(parameters, "createdFrom");
         var createdTo = TryGetDateTime(parameters, "createdTo");
@@ -274,6 +539,7 @@ public class TodoToolHandler
 
         return new TodoFilter(
             status,
+            priority,
             createdFrom,
             createdTo,
             updatedFrom,
@@ -282,7 +548,8 @@ public class TodoToolHandler
             startDateTo,
             completedFrom,
             completedTo,
-            isCompleted
+            isCompleted,
+            tag
         );
     }
 

@@ -31,6 +31,10 @@ public class TodoItemConfiguration : IEntityTypeConfiguration<TodoItem>
             .IsRequired()
             .HasConversion<string>(); // Store enum as string
 
+        builder.Property(t => t.Priority)
+            .IsRequired()
+            .HasConversion<string>(); // Store enum as string
+
         builder.Property(t => t.CreatedAt)
             .IsRequired();
 
@@ -45,6 +49,9 @@ public class TodoItemConfiguration : IEntityTypeConfiguration<TodoItem>
         builder.HasIndex(t => t.Status)
             .HasDatabaseName("IX_TodoItems_Status");
 
+        builder.HasIndex(t => t.Priority)
+            .HasDatabaseName("IX_TodoItems_Priority");
+
         builder.HasIndex(t => t.IsCompleted)
             .HasDatabaseName("IX_TodoItems_IsCompleted");
 
@@ -53,5 +60,31 @@ public class TodoItemConfiguration : IEntityTypeConfiguration<TodoItem>
 
         builder.HasIndex(t => t.UpdatedAt)
             .HasDatabaseName("IX_TodoItems_UpdatedAt");
+
+        // Many-to-many: TodoItems <-> Tags
+        builder.HasMany(t => t.Tags)
+            .WithMany(t => t.TodoItems)
+            .UsingEntity<Dictionary<string, object>>(
+                "TodoItemTags",
+                j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId").OnDelete(DeleteBehavior.Cascade),
+                j => j.HasOne<TodoItem>().WithMany().HasForeignKey("TodoItemId").OnDelete(DeleteBehavior.Cascade),
+                j =>
+                {
+                    j.HasKey("TodoItemId", "TagId");
+                    j.ToTable("TodoItemTags");
+                });
+
+        // Self-referencing many-to-many: Dependencies
+        builder.HasMany(t => t.Dependencies)
+            .WithMany(t => t.Dependents)
+            .UsingEntity<Dictionary<string, object>>(
+                "TodoItemDependencies",
+                j => j.HasOne<TodoItem>().WithMany().HasForeignKey("DependencyId").OnDelete(DeleteBehavior.Cascade),
+                j => j.HasOne<TodoItem>().WithMany().HasForeignKey("TodoItemId").OnDelete(DeleteBehavior.Cascade),
+                j =>
+                {
+                    j.HasKey("TodoItemId", "DependencyId");
+                    j.ToTable("TodoItemDependencies");
+                });
     }
 }
